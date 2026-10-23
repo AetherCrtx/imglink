@@ -17,15 +17,56 @@
   }
 }
 
-/* Neo-brutalist tactile utilities */
-.brutal-btn {
-  @apply font-black uppercase tracking-wider border-[3px] border-black transition-all duration-150 select-none;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.brutal-card {
-  @apply bg-white border-[3px] border-black shadow-brutal;
+.animate-fadeIn {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.brutal-input {
-  @apply bg-white border-[3px] border-black font-mono font-medium text-black px-4 py-3 shadow-brutal-sm focus:outline-none focus:shadow-brutal transition-all;
+@layer components {
+  .brutal-card {
+    background-color: #ffffff;
+    border: 3px solid #000000;
+    box-shadow: 4px 4px 0px 0px #000000;
+  }
+
+  .brutal-btn {
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 3px solid #000000;
+    box-shadow: 4px 4px 0px 0px #000000;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+
+  .brutal-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px 0px #000000;
+  }
+
+  .brutal-input {
+    background-color: #ffffff;
+    border: 3px solid #000000;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    color: #000000;
+    padding: 0.75rem 1rem;
+    box-shadow: 2px 2px 0px 0px #000000;
+    transition: all 0.15s ease;
+  }
+
+  .brutal-input:focus {
+    outline: none;
+    box-shadow: 4px 4px 0px 0px #000000;
+  }
 }
