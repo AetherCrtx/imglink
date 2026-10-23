@@ -6,9 +6,9 @@ import { UploadZone } from './components/UploadZone';
 import { ResultCard } from './components/ResultCard';
 import { RecentUploads } from './components/RecentUploads';
 import { AuthModal } from './components/AuthModal';
-import { AdminPanel } from './components/AdminPanel';
 import { ProUpgradeModal } from './components/ProUpgradeModal';
 import { LegalAgreementModal } from './components/LegalAgreementModal';
+import { SecretAdminGate } from './components/SecretAdminGate';
 import type { ImageRecord, AuthUser } from './types';
 import { initializeAuth, clearAuthSession, setAuthSession } from './utils/auth';
 import { Sparkles, ArrowDown, ShieldCheck, Zap } from 'lucide-react';
@@ -16,9 +16,12 @@ import { Sparkles, ArrowDown, ShieldCheck, Zap } from 'lucide-react';
 export const App: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState<boolean>(false);
   const [isProModalOpen, setIsProModalOpen] = useState<boolean>(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
+  const [isSecretRouteActive, setIsSecretRouteActive] = useState<boolean>(() => {
+    const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
+    return path === '/rashqaandreanfitrahsulaemanganteng';
+  });
   const [activeFilter, setActiveFilter] = useState<'all' | 'mine'>('mine');
 
   const [images, setImages] = useState<ImageRecord[]>([]);
@@ -120,6 +123,17 @@ export const App: React.FC = () => {
           setUser(null);
         }
       });
+  }, []);
+
+  // Listen to browser navigation to detect secret admin route
+  useEffect(() => {
+    const checkRoute = () => {
+      const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
+      setIsSecretRouteActive(path === '/rashqaandreanfitrahsulaemanganteng');
+    };
+
+    window.addEventListener('popstate', checkRoute);
+    return () => window.removeEventListener('popstate', checkRoute);
   }, []);
 
   const fetchRecentImages = useCallback(async () => {
@@ -226,7 +240,6 @@ export const App: React.FC = () => {
         user={user}
         onOpenAuth={handleOpenAuth}
         onLogout={handleLogout}
-        onOpenAdmin={() => setIsAdminPanelOpen(true)}
         onOpenProModal={() => setIsProModalOpen(true)}
       />
 
@@ -378,15 +391,15 @@ export const App: React.FC = () => {
         onClose={() => setIsLegalModalOpen(false)}
       />
 
-      {/* Admin Panel Modal */}
-      {user?.role === 'admin' && (
-        <AdminPanel
-          isOpen={isAdminPanelOpen}
-          onClose={() => {
-            setIsAdminPanelOpen(false);
+      {/* Secret Route Admin Gate */}
+      {isSecretRouteActive && (
+        <SecretAdminGate
+          currentUserEmail={user?.email || 'admin@imglink.web.id'}
+          onExit={() => {
+            window.history.pushState({}, '', '/');
+            setIsSecretRouteActive(false);
             fetchRecentImages();
           }}
-          currentUserEmail={user.email}
         />
       )}
 

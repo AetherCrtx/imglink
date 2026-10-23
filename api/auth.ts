@@ -325,12 +325,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // 5. Admin: List Members
+  // 5. Secret Admin Passkey Verification
+  if (action === 'verify-admin-key') {
+    const key = String(req.body?.key || req.query.key || '').trim();
+    if (key === '020709') {
+      return res.status(200).json({ valid: true, message: 'Clearance verified.' });
+    }
+    return res.status(401).json({ valid: false, error: 'Invalid admin clearance passkey.' });
+  }
+
+  // 6. Admin: List Members
   if (action === 'admin-members') {
     try {
+      const adminKeyHeader =
+        (req.headers['x-admin-key'] as string) ||
+        (req.headers['x-admin-secret'] as string) ||
+        req.body?.adminKey;
       const user = await getAuthUserAsync(req);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ error: 'Access denied. Administrator privileges required.' });
+
+      const isAuthorized =
+        adminKeyHeader === '020709' || (user && user.role === 'admin');
+
+      if (!isAuthorized) {
+        return res.status(403).json({ error: 'Access denied. Secret admin clearance required.' });
       }
 
       const members = await sql`
@@ -356,12 +373,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // 6. Admin: Approve / Reject / Manage Member Tier
+  // 7. Admin: Approve / Reject / Manage Member Tier
   if (action === 'admin-pro-action') {
     try {
+      const adminKeyHeader =
+        (req.headers['x-admin-key'] as string) ||
+        (req.headers['x-admin-secret'] as string) ||
+        req.body?.adminKey;
       const user = await getAuthUserAsync(req);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ error: 'Access denied. Administrator privileges required.' });
+
+      const isAuthorized =
+        adminKeyHeader === '020709' || (user && user.role === 'admin');
+
+      if (!isAuthorized) {
+        return res.status(403).json({ error: 'Access denied. Secret admin clearance required.' });
       }
 
       const { targetUserId, decision, tier } = req.body || {};

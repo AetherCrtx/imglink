@@ -14,7 +14,7 @@ interface HeaderProps {
   user: AuthUser | null;
   onOpenAuth: () => void;
   onLogout: () => void;
-  onOpenAdmin: () => void;
+  onOpenAdmin?: () => void;
   onOpenProModal: () => void;
 }
 
@@ -22,10 +22,8 @@ export const Header: React.FC<HeaderProps> = ({
   user,
   onOpenAuth,
   onLogout,
-  onOpenAdmin,
   onOpenProModal,
 }) => {
-  const isAdmin = user?.role === 'admin';
   const isPro = user?.tier === 'pro';
   const isPendingPro = user?.proRequestStatus === 'pending';
 
@@ -82,22 +80,10 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* Auth & Admin Navigation */}
+        {/* Auth Navigation */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {user ? (
             <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* Admin Panel Button */}
-              {isAdmin && (
-                <button
-                  onClick={onOpenAdmin}
-                  className="min-h-[38px] sm:min-h-[42px] px-2.5 sm:px-3 py-1.5 sm:py-2 bg-neo-purple hover:bg-black text-white active:translate-x-0.5 active:translate-y-0.5 border-[2px] sm:border-[3px] border-black font-black uppercase text-xs shadow-brutal-sm flex items-center gap-1.5 transition-all"
-                  title="Admin Console"
-                >
-                  <ShieldCheck className="w-4 h-4 stroke-[3]" />
-                  <span className="hidden sm:inline">Admin Panel</span>
-                </button>
-              )}
-
               {/* User Identity Chip */}
               <div className="flex items-center gap-1.5 sm:gap-2 px-2 py-1 sm:px-3 sm:py-1.5 bg-neo-cyan/20 border-2 border-black shadow-brutal-sm">
                 <div className="w-6 h-6 sm:w-7 sm:h-7 bg-neo-yellow text-black border-2 border-black flex items-center justify-center font-black text-xs font-mono overflow-hidden shadow-brutal-sm flex-shrink-0">

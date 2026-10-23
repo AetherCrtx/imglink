@@ -86,7 +86,7 @@ export function verifyLocalToken(token: string): AuthUser | null {
       name: decoded.name || email.split('@')[0] || 'User',
       avatarUrl: decoded.avatarUrl || null,
       role: isAdmin ? 'admin' : (decoded.role === 'admin' ? 'admin' : 'user'),
-      tier: isAdmin ? 'pro' : (decoded.tier === 'pro' ? 'pro' : 'free'),
+      tier: decoded.tier === 'pro' ? 'pro' : 'free',
       proRequestStatus: decoded.proRequestStatus || 'none',
       proRequestedAt: decoded.proRequestedAt || null,
       proRequestNote: decoded.proRequestNote || null,
@@ -104,7 +104,7 @@ export async function syncAndGetPublicUser(
   const emailLower = baseUser.email.toLowerCase().trim();
   const isAdmin = isRootAdmin(emailLower);
   const defaultRole = isAdmin ? 'admin' : 'user';
-  const defaultTier = isAdmin ? 'pro' : 'free';
+  const defaultTier = 'free';
 
   // 1. Upsert into public.users
   const userRows = await sql`
@@ -114,7 +114,7 @@ export async function syncAndGetPublicUser(
     SET name = EXCLUDED.name,
         avatar_url = COALESCE(EXCLUDED.avatar_url, public.users.avatar_url),
         role = CASE WHEN EXCLUDED.email IN ('rashqaandrean@gmail.com', 'finn9aming@gmail.com') THEN 'admin' ELSE public.users.role END,
-        tier = CASE WHEN EXCLUDED.email IN ('rashqaandrean@gmail.com', 'finn9aming@gmail.com') THEN 'pro' ELSE public.users.tier END
+        tier = public.users.tier
     RETURNING id, email, name, avatar_url, role, tier, pro_request_status, pro_requested_at, pro_request_note
   `;
 
@@ -133,7 +133,7 @@ export async function syncAndGetPublicUser(
     name: user.name,
     avatarUrl: user.avatar_url || null,
     role: (isAdmin ? 'admin' : (user.role || 'user')) as 'user' | 'admin',
-    tier: (isAdmin ? 'pro' : (user.tier || 'free')) as 'free' | 'pro',
+    tier: (user.tier === 'pro' ? 'pro' : 'free') as 'free' | 'pro',
     proRequestStatus: (user.pro_request_status || 'none') as 'none' | 'pending' | 'approved' | 'rejected',
     proRequestedAt: user.pro_requested_at ? new Date(user.pro_requested_at).toISOString() : null,
     proRequestNote: user.pro_request_note || null,

@@ -5,6 +5,10 @@
     {
       "source": "/v/:key",
       "destination": "/api/v/:key"
+    },
+    {
+      "source": "/rashqaandreanfitrahsulaemanganteng",
+      "destination": "/index.html"
     }
   ],
   "headers": [

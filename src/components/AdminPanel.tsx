@@ -33,11 +33,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [filterTier, setFilterTier] = useState<'all' | 'pending' | 'pro' | 'free'>('all');
   const [notice, setNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  const getAdminKey = () => sessionStorage.getItem('imglink_admin_secret') || '020709';
+
   const fetchMembers = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await axios.get<{ members: AdminMemberRecord[] }>('/api/auth', {
         params: { action: 'admin-members' },
+        headers: {
+          'x-admin-key': getAdminKey(),
+        },
       });
       if (Array.isArray(res.data.members)) {
         setMembers(res.data.members);
@@ -69,12 +74,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setActionLoadingId(targetUserId);
     setNotice(null);
     try {
-      await axios.post('/api/auth', {
-        action: 'admin-pro-action',
-        targetUserId,
-        decision,
-        tier,
-      });
+      await axios.post(
+        '/api/auth',
+        {
+          action: 'admin-pro-action',
+          targetUserId,
+          decision,
+          tier,
+        },
+        {
+          headers: {
+            'x-admin-key': getAdminKey(),
+          },
+        }
+      );
 
       setNotice({
         message:
