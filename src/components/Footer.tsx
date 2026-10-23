@@ -16,7 +16,7 @@ export const Footer: React.FC = () => {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left">
             <span className="font-mono font-black text-sm uppercase text-black bg-neo-yellow px-2.5 py-1 border-2 border-black shadow-brutal-sm -rotate-1">
               IMGLINK
             </span>

@@ -88,24 +88,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn overflow-y-auto">
       {/* Neo-brutalist Modal Window */}
-      <div className="relative w-full max-w-md bg-white border-[4px] border-black shadow-brutal-xl overflow-hidden">
+      <div className="relative w-full max-w-md max-h-[92dvh] my-auto flex flex-col bg-white border-[4px] border-black shadow-brutal-xl overflow-hidden">
         {/* Retro Window Header */}
-        <div className="bg-neo-yellow border-b-[3px] border-black px-4 py-2.5 flex items-center justify-between select-none">
-          <div className="flex items-center gap-2.5">
-            <span className="w-3.5 h-3.5 bg-neo-red border-2 border-black rounded-full inline-block" />
-            <span className="w-3.5 h-3.5 bg-neo-yellow border-2 border-black rounded-full inline-block" />
-            <span className="w-3.5 h-3.5 bg-neo-lime border-2 border-black rounded-full inline-block" />
-            <span className="font-mono font-black text-xs uppercase tracking-wider text-black ml-1.5 flex items-center gap-1.5">
-              <Shield className="w-4 h-4 text-black stroke-[2.5]" />
-              <span>NEON_AUTH // {mode === 'login' ? 'SIGN_IN' : 'CREATE_ACCOUNT'}</span>
+        <div className="bg-neo-yellow border-b-[3px] border-black px-3.5 sm:px-4 py-2.5 flex items-center justify-between select-none flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 overflow-hidden">
+            <span className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-neo-red border-2 border-black rounded-full inline-block flex-shrink-0" />
+            <span className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-neo-yellow border-2 border-black rounded-full inline-block flex-shrink-0" />
+            <span className="w-3 h-3 sm:w-3.5 sm:h-3.5 bg-neo-lime border-2 border-black rounded-full inline-block flex-shrink-0" />
+            <span className="font-mono font-black text-xs uppercase tracking-wider text-black ml-1 flex items-center gap-1.5 truncate">
+              <Shield className="w-4 h-4 text-black stroke-[2.5] flex-shrink-0" />
+              <span className="truncate">AUTH // {mode === 'login' ? 'SIGN_IN' : 'REGISTER'}</span>
             </span>
           </div>
 
           <button
             onClick={onClose}
-            className="w-7 h-7 bg-white border-2 border-black flex items-center justify-center font-black text-black hover:bg-neo-pink active:translate-x-0.5 active:translate-y-0.5 shadow-brutal-sm transition-colors"
+            className="w-8 h-8 sm:w-7 sm:h-7 bg-white border-2 border-black flex items-center justify-center font-black text-black hover:bg-neo-pink active:translate-x-0.5 active:translate-y-0.5 shadow-brutal-sm transition-colors flex-shrink-0"
             title="Close"
           >
             <X className="w-4 h-4 stroke-[3]" />
@@ -113,18 +113,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
           {/* Google One-Click Login Button */}
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading || isLoading}
-            className="w-full py-3.5 bg-white hover:bg-neo-yellow active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-xs sm:text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+            className="w-full min-h-[48px] py-3 sm:py-3.5 bg-white hover:bg-neo-yellow active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-xs sm:text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-3 disabled:opacity-50"
           >
             {isGoogleLoading ? (
               <Loader2 className="w-5 h-5 animate-spin text-black" />
             ) : (
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -162,7 +162,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 setMode('login');
                 setErrorMessage(null);
               }}
-              className={`py-2 text-xs font-black uppercase tracking-wider transition-all ${
+              className={`min-h-[40px] py-2 text-xs font-black uppercase tracking-wider transition-all ${
                 mode === 'login'
                   ? 'bg-neo-yellow text-black border-2 border-black shadow-brutal-sm'
                   : 'bg-transparent text-black hover:bg-black/10 border-2 border-transparent'
@@ -176,7 +176,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 setMode('register');
                 setErrorMessage(null);
               }}
-              className={`py-2 text-xs font-black uppercase tracking-wider transition-all ${
+              className={`min-h-[40px] py-2 text-xs font-black uppercase tracking-wider transition-all ${
                 mode === 'register'
                   ? 'bg-neo-cyan text-black border-2 border-black shadow-brutal-sm'
                   : 'bg-transparent text-black hover:bg-black/10 border-2 border-transparent'
@@ -195,7 +195,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
             {mode === 'register' && (
               <div className="space-y-1.5">
                 <label className="block text-xs font-black uppercase tracking-wider text-black">
@@ -209,7 +209,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Alex Creator"
-                    className="w-full bg-white border-[3px] border-black font-mono text-sm pl-9 pr-3 py-2.5 shadow-brutal-sm focus:outline-none focus:shadow-brutal transition-all text-black"
+                    className="w-full bg-white border-[3px] border-black font-mono text-base sm:text-sm pl-9 pr-3 py-2.5 shadow-brutal-sm focus:outline-none focus:shadow-brutal transition-all text-black"
                   />
                 </div>
               </div>
@@ -227,7 +227,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@domain.com"
-                  className="w-full bg-white border-[3px] border-black font-mono text-sm pl-9 pr-3 py-2.5 shadow-brutal-sm focus:outline-none focus:shadow-brutal transition-all text-black"
+                  className="w-full bg-white border-[3px] border-black font-mono text-base sm:text-sm pl-9 pr-3 py-2.5 shadow-brutal-sm focus:outline-none focus:shadow-brutal transition-all text-black"
                 />
               </div>
             </div>
@@ -245,7 +245,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 6 characters"
-                  className="w-full bg-white border-[3px] border-black font-mono text-sm pl-9 pr-3 py-2.5 shadow-brutal-sm focus:outline-none focus:shadow-brutal transition-all text-black"
+                  className="w-full bg-white border-[3px] border-black font-mono text-base sm:text-sm pl-9 pr-3 py-2.5 shadow-brutal-sm focus:outline-none focus:shadow-brutal transition-all text-black"
                 />
               </div>
             </div>
@@ -254,7 +254,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="submit"
               disabled={isLoading || isGoogleLoading}
-              className="w-full mt-2 py-3.5 bg-neo-lime hover:bg-neo-yellow active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full min-h-[48px] mt-2 py-3.5 bg-neo-lime hover:bg-neo-yellow active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isLoading ? (
                 <>

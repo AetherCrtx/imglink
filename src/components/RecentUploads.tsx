@@ -81,23 +81,23 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
   return (
     <div className="w-full space-y-6">
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white border-[3px] border-black shadow-brutal">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-black uppercase tracking-tight text-black flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 bg-white border-[3px] border-black shadow-brutal">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-black flex items-center gap-2">
             Gallery Archive
           </h2>
-          <span className="px-3 py-0.5 bg-neo-pink border-2 border-black font-mono font-black text-xs text-black shadow-brutal-sm rotate-1">
+          <span className="px-2.5 sm:px-3 py-0.5 bg-neo-pink border-2 border-black font-mono font-black text-xs text-black shadow-brutal-sm rotate-1">
             {images.length} {images.length === 1 ? 'ITEM' : 'ITEMS'}
           </span>
         </div>
 
         {/* Filter & Refresh Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between sm:justify-end gap-2">
           {user && (
             <div className="flex bg-neo-bg border-2 border-black p-0.5 shadow-brutal-sm">
               <button
                 onClick={() => setActiveFilter('all')}
-                className={`px-3 py-1 font-mono font-black text-xs uppercase transition-all ${
+                className={`min-h-[36px] px-3 py-1 font-mono font-black text-xs uppercase flex items-center transition-all ${
                   activeFilter === 'all'
                     ? 'bg-neo-yellow text-black border-2 border-black shadow-brutal-sm'
                     : 'text-black hover:bg-black/10'
@@ -107,7 +107,7 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
               </button>
               <button
                 onClick={() => setActiveFilter('mine')}
-                className={`px-3 py-1 font-mono font-black text-xs uppercase flex items-center gap-1 transition-all ${
+                className={`min-h-[36px] px-3 py-1 font-mono font-black text-xs uppercase flex items-center gap-1 transition-all ${
                   activeFilter === 'mine'
                     ? 'bg-neo-cyan text-black border-2 border-black shadow-brutal-sm'
                     : 'text-black hover:bg-black/10'
@@ -122,7 +122,7 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="px-3.5 py-1.5 bg-neo-lime hover:bg-neo-yellow active:translate-x-0.5 active:translate-y-0.5 border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm flex items-center gap-1.5 transition-all disabled:opacity-50"
+            className="min-h-[36px] px-3 sm:px-3.5 py-1.5 bg-neo-lime hover:bg-neo-yellow active:translate-x-0.5 active:translate-y-0.5 border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm flex items-center gap-1.5 transition-all disabled:opacity-50 flex-shrink-0"
             title="Refresh gallery"
           >
             <RefreshCw
@@ -171,7 +171,7 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
 
       {/* Gallery Cards Grid */}
       {images.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
           {images.map((image, index) => {
             const publicUrl = getPublicViewUrl(image.fileKey);
             const isDeleting = deletingId === image.id;
@@ -205,7 +205,7 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
                     href={publicUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="absolute top-2 right-2 p-1.5 bg-white border-2 border-black text-black hover:bg-neo-cyan shadow-brutal-sm transition-all"
+                    className="absolute top-2 right-2 min-h-[34px] min-w-[34px] p-1.5 bg-white border-2 border-black text-black hover:bg-neo-cyan shadow-brutal-sm transition-all flex items-center justify-center"
                     title="Open full view"
                   >
                     <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -213,7 +213,7 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
                 </div>
 
                 {/* Card Body */}
-                <div className="p-4 flex-1 flex flex-col justify-between gap-3">
+                <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between gap-3">
                   <div>
                     <h4
                       className="font-black text-sm uppercase text-black truncate tracking-tight"
@@ -240,7 +240,7 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
                     {/* Copy Link Button */}
                     <button
                       onClick={() => handleCopyLink(image)}
-                      className={`flex-1 py-2 px-3 border-2 border-black font-mono font-black text-xs uppercase flex items-center justify-center gap-1.5 shadow-brutal-sm active:translate-x-0.5 active:translate-y-0.5 transition-all ${
+                      className={`flex-1 min-h-[42px] sm:min-h-[38px] py-2 px-3 border-2 border-black font-mono font-black text-xs uppercase flex items-center justify-center gap-1.5 shadow-brutal-sm active:translate-x-0.5 active:translate-y-0.5 transition-all ${
                         isCopied
                           ? 'bg-neo-lime text-black'
                           : 'bg-neo-yellow hover:bg-neo-cyan text-black'
@@ -264,7 +264,7 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
                       onClick={() => handleDeleteClick(image)}
                       disabled={isDeleting}
                       title={isConfirming ? 'Click again to confirm delete' : 'Delete image'}
-                      className={`p-2 border-2 border-black font-mono font-black text-xs uppercase transition-all shadow-brutal-sm active:translate-x-0.5 active:translate-y-0.5 ${
+                      className={`min-h-[42px] sm:min-h-[38px] min-w-[42px] sm:min-w-[38px] p-2 border-2 border-black font-mono font-black text-xs uppercase transition-all shadow-brutal-sm active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center ${
                         isConfirming
                           ? 'bg-neo-red text-white animate-pulse px-2.5 flex items-center gap-1'
                           : 'bg-white hover:bg-neo-pink text-black'

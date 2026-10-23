@@ -176,11 +176,11 @@ export const App: React.FC = () => {
         </div>
       </div>
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 space-y-12">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12 space-y-8 sm:space-y-12">
         {/* Floating Neo-Brutalist Toast */}
         {actionNotice && (
           <div
-            className={`fixed bottom-6 right-6 z-50 px-5 py-3.5 border-[3px] border-black font-mono font-black text-xs uppercase shadow-brutal-lg animate-fadeIn flex items-center gap-2.5 ${
+            className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-md z-50 px-4 py-3 sm:px-5 sm:py-3.5 border-[3px] border-black font-mono font-black text-xs uppercase shadow-brutal-lg animate-fadeIn flex items-center gap-2.5 ${
               actionNotice.type === 'success'
                 ? 'bg-neo-lime text-black'
                 : 'bg-neo-pink text-black'
@@ -191,37 +191,37 @@ export const App: React.FC = () => {
         )}
 
         {/* Hero Section (Neo-Brutalism) */}
-        <section className="text-center space-y-5 pt-2">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-neo-cyan border-[3px] border-black font-mono font-black text-xs uppercase text-black shadow-brutal -rotate-1 hover:rotate-1 transition-transform">
-            <Sparkles className="w-4 h-4 fill-black" />
+        <section className="text-center space-y-4 sm:space-y-5 pt-1 sm:pt-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-1.5 bg-neo-cyan border-[3px] border-black font-mono font-black text-[10px] sm:text-xs uppercase text-black shadow-brutal-sm sm:shadow-brutal -rotate-1 hover:rotate-1 transition-transform">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-black" />
             <span>DIRECT NEON S3 PRESIGNED // ZERO BOTTLENECK</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-black uppercase tracking-tight text-black leading-none max-w-4xl mx-auto">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight text-black leading-tight sm:leading-none max-w-4xl mx-auto px-1">
             Convert Any Image into a{' '}
-            <span className="bg-neo-yellow px-2.5 py-0.5 border-[3px] border-black inline-block shadow-brutal my-1 -rotate-1">
+            <span className="bg-neo-yellow px-2 py-0.5 border-[3px] border-black inline-block shadow-brutal-sm sm:shadow-brutal my-1 -rotate-1">
               Shareable URL
             </span>{' '}
-            <span className="bg-neo-pink px-2.5 py-0.5 border-[3px] border-black inline-block shadow-brutal my-1 rotate-1">
+            <span className="bg-neo-pink px-2 py-0.5 border-[3px] border-black inline-block shadow-brutal-sm sm:shadow-brutal my-1 rotate-1">
               Instantly.
             </span>
           </h1>
 
-          <p className="font-mono text-xs sm:text-sm font-bold text-black/80 max-w-xl mx-auto leading-relaxed">
+          <p className="font-mono text-xs sm:text-sm font-bold text-black/80 max-w-xl mx-auto leading-relaxed px-2">
             Ultra-fast direct-to-cloud upload to Neon Object Storage private bucket. Instant short URLs, Markdown/HTML embed snippets, and serverless database indexing.
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-lime border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
-              <Zap className="w-3.5 h-3.5 fill-black" />
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-1 sm:pt-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 bg-neo-lime border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
+              <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-black" />
               10MB MAX PER FILE
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-cyan border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm rotate-1 hover:scale-105 transition-transform">
-              <ShieldCheck className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 bg-neo-cyan border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm rotate-1 hover:scale-105 transition-transform">
+              <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5]" />
               PRIVATE OBJECT STORAGE
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-purple border-2 border-black font-mono font-black text-xs uppercase text-white shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
-              <Sparkles className="w-3.5 h-3.5 fill-white" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 bg-neo-purple border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-white shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-white" />
               NEON POSTGRESQL DB
             </span>
           </div>
@@ -246,10 +246,10 @@ export const App: React.FC = () => {
         </section>
 
         {/* Divider with Neo-brutalist Tag */}
-        <div className="relative py-4 flex items-center justify-center">
+        <div className="relative py-3 sm:py-4 flex items-center justify-center">
           <div className="w-full border-t-[3px] border-black" />
-          <div className="absolute px-5 py-1.5 bg-neo-pink border-[3px] border-black font-mono font-black text-xs uppercase text-black shadow-brutal flex items-center gap-2 -rotate-1 hover:rotate-1 transition-transform">
-            <ArrowDown className="w-4 h-4 stroke-[3]" />
+          <div className="absolute px-3.5 py-1 sm:px-5 sm:py-1.5 bg-neo-pink border-[3px] border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm sm:shadow-brutal flex items-center gap-2 -rotate-1 hover:rotate-1 transition-transform">
+            <ArrowDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
             <span>GALLERY & ARCHIVE</span>
           </div>
         </div>
