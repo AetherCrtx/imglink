@@ -51,8 +51,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Check Free Member 3-image limit
-    if (user.tier === 'free' && (user.imageCount ?? 0) >= 3) {
+    // Check Free Member 3-image limit (Admin and Pro accounts have unlimited quota)
+    const isProOrAdmin = user.role === 'admin' || user.tier === 'pro';
+    if (!isProOrAdmin && (user.imageCount ?? 0) >= 3) {
       return res.status(403).json({
         error: 'Free member limit reached (maximum 3 images). Upgrade to Pro for unlimited uploads!',
         limitReached: true,

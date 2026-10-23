@@ -24,8 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenProModal,
 }) => {
-  const isPro = user?.tier === 'pro';
-  const isPendingPro = user?.proRequestStatus === 'pending';
+  const isPro = user?.tier === 'pro' || user?.role === 'admin';
+  const isPendingPro = !isPro && user?.proRequestStatus === 'pending';
 
   return (
     <header className="border-b-[4px] border-black bg-white sticky top-0 z-40 shadow-brutal-sm">

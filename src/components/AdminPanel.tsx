@@ -123,8 +123,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const pendingRequests = members.filter((m) => m.proRequestStatus === 'pending');
-  const totalPro = members.filter((m) => m.tier === 'pro').length;
-  const totalFree = members.filter((m) => m.tier === 'free').length;
+  const totalPro = members.filter((m) => m.tier === 'pro' || m.role === 'admin').length;
+  const totalFree = members.filter((m) => m.tier === 'free' && m.role !== 'admin').length;
 
   const filteredMembers = members.filter((m) => {
     const matchesSearch =
@@ -132,9 +132,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       m.email.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
+    const isMemberPro = m.tier === 'pro' || m.role === 'admin';
     if (filterTier === 'pending') return m.proRequestStatus === 'pending';
-    if (filterTier === 'pro') return m.tier === 'pro';
-    if (filterTier === 'free') return m.tier === 'free';
+    if (filterTier === 'pro') return isMemberPro;
+    if (filterTier === 'free') return !isMemberPro;
     return true;
   });
 
@@ -358,6 +359,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     filteredMembers.map((m) => {
                       const isSelf = m.email.toLowerCase() === currentUserEmail.toLowerCase();
                       const isRootAdmin = m.role === 'admin';
+                      const isMemberPro = m.tier === 'pro' || isRootAdmin;
 
                       return (
                         <tr key={m.id} className="hover:bg-neo-yellow/10 transition-colors">
@@ -392,7 +394,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </td>
 
                           <td className="p-3">
-                            {m.tier === 'pro' ? (
+                            {isMemberPro ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-neo-lime text-black border border-black font-black text-[10px] uppercase shadow-brutal-sm">
                                 <Crown className="w-3 h-3 stroke-[3]" />
                                 PRO
@@ -408,12 +410,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <span className="inline-flex items-center gap-1 font-black">
                               <ImageIcon className="w-3 h-3" />
                               {m.imageCount}
-                              {m.tier === 'free' && <span className="text-black/50">/3</span>}
+                              {!isMemberPro && <span className="text-black/50">/3</span>}
                             </span>
                           </td>
 
                           <td className="p-3">
-                            {m.proRequestStatus === 'pending' ? (
+                            {isRootAdmin ? (
+                              <span className="text-green-700 font-bold uppercase text-[10px]">
+                                AUTO PRO
+                              </span>
+                            ) : m.proRequestStatus === 'pending' ? (
                               <span className="px-2 py-0.5 bg-neo-orange text-black border border-black font-black text-[10px] uppercase animate-pulse">
                                 PENDING
                               </span>
@@ -433,7 +439,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <td className="p-3 text-right">
                             {isRootAdmin ? (
                               <span className="text-[10px] font-bold text-black/50 uppercase">
-                                ROOT
+                                ROOT ADMIN
                               </span>
                             ) : (
                               <div className="flex items-center justify-end gap-1.5">

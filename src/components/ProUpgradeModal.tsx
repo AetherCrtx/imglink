@@ -74,8 +74,8 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
     }
   };
 
-  const isPro = user?.tier === 'pro';
-  const isPending = user?.proRequestStatus === 'pending';
+  const isPro = user?.tier === 'pro' || user?.role === 'admin';
+  const isPending = !isPro && user?.proRequestStatus === 'pending';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm animate-fadeIn overflow-y-auto">

@@ -74,8 +74,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      // Enforce Free tier 3-image limit
-      if (currentUser.tier === 'free' && (currentUser.imageCount ?? 0) >= 3) {
+      // Enforce Free tier 3-image limit (Admin and Pro accounts have unlimited quota)
+      const isProOrAdmin = currentUser.role === 'admin' || currentUser.tier === 'pro';
+      if (!isProOrAdmin && (currentUser.imageCount ?? 0) >= 3) {
         return res.status(403).json({
           error: 'Free tier limit reached (maximum 3 images). Please upgrade to Pro for unlimited uploads.',
           limitReached: true,

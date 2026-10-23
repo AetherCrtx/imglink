@@ -285,7 +285,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(401).json({ error: 'You must be signed in to request Pro status.' });
       }
 
-      if (user.tier === 'pro') {
+      if (user.tier === 'pro' || user.role === 'admin') {
         return res.status(200).json({ user, message: 'You are already a Pro member.' });
       }
 
@@ -354,8 +354,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const members = await sql`
-        SELECT u.id::text as id, u.email, u.name, u.avatar_url, u.role, u.tier,
-               u.pro_request_status, u.pro_requested_at, u.pro_request_note, u.created_at,
+        SELECT u.id::text as id, u.email, u.name, u.avatar_url, u.role,
+               CASE WHEN u.role = 'admin' THEN 'pro' ELSE u.tier END as tier,
+               CASE WHEN u.role = 'admin' THEN 'approved' ELSE u.pro_request_status END as pro_request_status,
+               u.pro_requested_at, u.pro_request_note, u.created_at,
                COALESCE(img.img_count, 0)::int as image_count
         FROM public.users u
         LEFT JOIN (

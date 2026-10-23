@@ -78,16 +78,16 @@ export function verifyLocalToken(token: string): AuthUser | null {
     }
 
     const email = String(decoded.email || '').toLowerCase().trim();
-    const isAdmin = isRootAdmin(email);
+    const isAdmin = isRootAdmin(email) || decoded.role === 'admin';
 
     return {
       id: String(decoded.id),
       email,
       name: decoded.name || email.split('@')[0] || 'User',
       avatarUrl: decoded.avatarUrl || null,
-      role: isAdmin ? 'admin' : (decoded.role === 'admin' ? 'admin' : 'user'),
-      tier: decoded.tier === 'pro' ? 'pro' : 'free',
-      proRequestStatus: decoded.proRequestStatus || 'none',
+      role: isAdmin ? 'admin' : 'user',
+      tier: isAdmin ? 'pro' : (decoded.tier === 'pro' ? 'pro' : 'free'),
+      proRequestStatus: isAdmin ? 'approved' : (decoded.proRequestStatus || 'none'),
       proRequestedAt: decoded.proRequestedAt || null,
       proRequestNote: decoded.proRequestNote || null,
       imageCount: typeof decoded.imageCount === 'number' ? decoded.imageCount : 0,
@@ -104,22 +104,31 @@ export async function syncAndGetPublicUser(
   const emailLower = baseUser.email.toLowerCase().trim();
   const isAdmin = isRootAdmin(emailLower);
   const defaultRole = isAdmin ? 'admin' : 'user';
-  const defaultTier = 'free';
+  const defaultTier = isAdmin ? 'pro' : 'free';
+  const defaultProStatus = isAdmin ? 'approved' : 'none';
 
   // 1. Upsert into public.users
   const userRows = await sql`
-    INSERT INTO public.users (id, email, name, avatar_url, role, tier, created_at)
-    VALUES (${baseUser.id}, ${emailLower}, ${baseUser.name}, ${baseUser.avatarUrl || null}, ${defaultRole}, ${defaultTier}, NOW())
+    INSERT INTO public.users (id, email, name, avatar_url, role, tier, pro_request_status, created_at)
+    VALUES (${baseUser.id}, ${emailLower}, ${baseUser.name}, ${baseUser.avatarUrl || null}, ${defaultRole}, ${defaultTier}, ${defaultProStatus}, NOW())
     ON CONFLICT (email) DO UPDATE
     SET name = EXCLUDED.name,
         avatar_url = COALESCE(EXCLUDED.avatar_url, public.users.avatar_url),
         role = CASE WHEN EXCLUDED.email IN ('rashqaandrean@gmail.com', 'finn9aming@gmail.com') THEN 'admin' ELSE public.users.role END,
-        tier = public.users.tier
+        tier = CASE
+          WHEN EXCLUDED.email IN ('rashqaandrean@gmail.com', 'finn9aming@gmail.com') OR public.users.role = 'admin' OR EXCLUDED.role = 'admin' THEN 'pro'
+          ELSE public.users.tier
+        END,
+        pro_request_status = CASE
+          WHEN EXCLUDED.email IN ('rashqaandrean@gmail.com', 'finn9aming@gmail.com') OR public.users.role = 'admin' OR EXCLUDED.role = 'admin' THEN 'approved'
+          ELSE public.users.pro_request_status
+        END
     RETURNING id, email, name, avatar_url, role, tier, pro_request_status, pro_requested_at, pro_request_note
   `;
 
   const user = userRows[0];
   const userId = String(user.id);
+  const isAdminUser = isAdmin || user.role === 'admin';
 
   // 2. Count images
   const countRows = await sql`
@@ -132,9 +141,9 @@ export async function syncAndGetPublicUser(
     email: user.email,
     name: user.name,
     avatarUrl: user.avatar_url || null,
-    role: (isAdmin ? 'admin' : (user.role || 'user')) as 'user' | 'admin',
-    tier: (user.tier === 'pro' ? 'pro' : 'free') as 'free' | 'pro',
-    proRequestStatus: (user.pro_request_status || 'none') as 'none' | 'pending' | 'approved' | 'rejected',
+    role: (isAdminUser ? 'admin' : (user.role || 'user')) as 'user' | 'admin',
+    tier: (isAdminUser || user.tier === 'pro' ? 'pro' : 'free') as 'free' | 'pro',
+    proRequestStatus: (isAdminUser ? 'approved' : (user.pro_request_status || 'none')) as 'none' | 'pending' | 'approved' | 'rejected',
     proRequestedAt: user.pro_requested_at ? new Date(user.pro_requested_at).toISOString() : null,
     proRequestNote: user.pro_request_note || null,
     imageCount,

@@ -43,8 +43,9 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
   const [selectedFileName, setSelectedFileName] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isFreeTier = user?.tier === 'free';
-  const hasReachedFreeLimit = isFreeTier && (user?.imageCount ?? 0) >= 3;
+  const isPro = Boolean(user?.tier === 'pro' || user?.role === 'admin');
+  const isFreeTier = Boolean(user && !isPro);
+  const hasReachedFreeLimit = Boolean(isFreeTier && (user?.imageCount ?? 0) >= 3);
 
   const validateFile = (file: File): string | null => {
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
@@ -394,10 +395,10 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
               <span className="w-3 h-3 bg-neo-yellow border-2 border-black rounded-full inline-block" />
               <span className="w-3 h-3 bg-neo-lime border-2 border-black rounded-full inline-block" />
               <span className="ml-1 sm:ml-2 tracking-wider hidden xs:inline">
-                IMGLINK // {user.tier === 'pro' ? 'PRO TIER' : `FREE TIER (${user.imageCount ?? 0}/3 USED)`}
+                IMGLINK // {isPro ? 'PRO TIER' : `FREE TIER (${user.imageCount ?? 0}/3 USED)`}
               </span>
               <span className="ml-1 tracking-wider xs:hidden">
-                {user.tier === 'pro' ? 'PRO' : `${user.imageCount ?? 0}/3 USED`}
+                {isPro ? 'PRO' : `${user.imageCount ?? 0}/3 USED`}
               </span>
             </div>
             <span className="px-2 py-0.5 bg-black text-white text-[10px] tracking-widest font-black">
