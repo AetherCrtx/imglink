@@ -354,7 +354,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const members = await sql`
-        SELECT u.id, u.email, u.name, u.avatar_url, u.role, u.tier,
+        SELECT u.id::text as id, u.email, u.name, u.avatar_url, u.role, u.tier,
                u.pro_request_status, u.pro_requested_at, u.pro_request_note, u.created_at,
                COALESCE(img.img_count, 0)::int as image_count
         FROM public.users u
@@ -362,7 +362,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           SELECT user_id, count(*)::int as img_count
           FROM public.images
           GROUP BY user_id
-        ) img ON u.id = img.user_id
+        ) img ON u.id::text = img.user_id
         ORDER BY
           CASE WHEN u.pro_request_status = 'pending' THEN 0 ELSE 1 END,
           u.created_at DESC
@@ -400,12 +400,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Missing targetUserId.' });
       }
 
-      const targetUserRows = await sql`SELECT email FROM public.users WHERE id = ${targetUserId}`;
+      const targetUserRows = await sql`SELECT email FROM public.users WHERE id::text = ${targetUserId}`;
       if (targetUserRows.length === 0) {
         return res.status(404).json({ error: 'Target user not found.' });
-      }
-      if (isRootAdmin(targetUserRows[0].email) && (decision === 'reject' || tier === 'free')) {
-        return res.status(400).json({ error: 'Cannot modify primary administrator tier.' });
       }
 
       if (decision === 'approve') {
@@ -413,13 +410,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           UPDATE public.users
           SET tier = 'pro',
               pro_request_status = 'approved'
-          WHERE id = ${targetUserId}
+          WHERE id::text = ${targetUserId}
         `;
       } else if (decision === 'reject') {
         await sql`
           UPDATE public.users
           SET pro_request_status = 'rejected'
-          WHERE id = ${targetUserId}
+          WHERE id::text = ${targetUserId}
         `;
       } else if (decision === 'set-tier') {
         const newTier = tier === 'pro' ? 'pro' : 'free';
@@ -427,7 +424,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           UPDATE public.users
           SET tier = ${newTier},
               pro_request_status = ${newTier === 'pro' ? 'approved' : 'none'}
-          WHERE id = ${targetUserId}
+          WHERE id::text = ${targetUserId}
         `;
       } else {
         return res.status(400).json({ error: 'Invalid decision action.' });
