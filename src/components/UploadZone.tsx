@@ -9,11 +9,15 @@ import {
   FileUp,
   X,
   Sparkles,
+  Lock,
+  ArrowRight,
 } from 'lucide-react';
-import type { ImageRecord, UploadProgress } from '../types';
+import type { ImageRecord, UploadProgress, AuthUser } from '../types';
 import { formatBytes } from '../utils/formatters';
 
 interface UploadZoneProps {
+  user: AuthUser | null;
+  onOpenAuth: (mode?: 'login' | 'register') => void;
   onUploadSuccess: (image: ImageRecord) => void;
   isUploading: boolean;
   setIsUploading: (uploading: boolean) => void;
@@ -23,6 +27,8 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export const UploadZone: React.FC<UploadZoneProps> = ({
+  user,
+  onOpenAuth,
   onUploadSuccess,
   isUploading,
   setIsUploading,
@@ -35,10 +41,10 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
 
   const validateFile = (file: File): string | null => {
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      return `Unsupported format "${file.type || 'unknown'}". Allowed: JPG, PNG, WebP, GIF.`;
+      return `UNSUPPORTED FORMAT "${file.type || 'unknown'}". ALLOWED: JPG, PNG, WEBP, GIF.`;
     }
     if (file.size > MAX_FILE_SIZE) {
-      return `File size (${formatBytes(file.size)}) exceeds the 10MB maximum limit.`;
+      return `FILE SIZE (${formatBytes(file.size)}) EXCEEDS THE 10MB MAXIMUM LIMIT.`;
     }
     return null;
   };
@@ -46,6 +52,12 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
   const processUpload = useCallback(
     async (file: File) => {
       setValidationError(null);
+
+      if (!user) {
+        onOpenAuth('login');
+        return;
+      }
+
       const error = validateFile(file);
       if (error) {
         setValidationError(error);
@@ -59,7 +71,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         percent: 10,
         loadedBytes: 0,
         totalBytes: file.size,
-        statusText: 'Requesting secure direct-upload authorization...',
+        statusText: '1/3 GETTING PRESIGNED B2 URL...',
       });
 
       try {
@@ -81,7 +93,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           percent: 20,
           loadedBytes: 0,
           totalBytes: file.size,
-          statusText: 'Transferring directly to cloud storage...',
+          statusText: '2/3 STREAMING DIRECTLY TO B2 CLOUD...',
         });
 
         await axios.put(uploadUrl, file, {
@@ -91,17 +103,13 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           onUploadProgress: (progressEvent) => {
             if (progressEvent.total) {
               const uploadFraction = progressEvent.loaded / progressEvent.total;
-              // Map from 20% to 85%
-              const currentPercent = Math.min(
-                85,
-                Math.round(20 + uploadFraction * 65)
-              );
+              const currentPercent = Math.min(85, Math.round(20 + uploadFraction * 65));
               setProgress({
                 stage: 'uploading',
                 percent: currentPercent,
                 loadedBytes: progressEvent.loaded,
                 totalBytes: progressEvent.total,
-                statusText: `Uploading... ${Math.round(uploadFraction * 100)}% (${formatBytes(
+                statusText: `2/3 UPLOADING... ${Math.round(uploadFraction * 100)}% (${formatBytes(
                   progressEvent.loaded
                 )} / ${formatBytes(progressEvent.total)})`,
               });
@@ -112,10 +120,10 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         // Step 3: Save metadata to Neon PostgreSQL
         setProgress({
           stage: 'saving-metadata',
-          percent: 90,
+          percent: 92,
           loadedBytes: file.size,
           totalBytes: file.size,
-          statusText: 'Finalizing database record...',
+          statusText: '3/3 SAVING METADATA TO NEON DB...',
         });
 
         const metadataResponse = await axios.post<ImageRecord>('/api/images', {
@@ -130,10 +138,9 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           percent: 100,
           loadedBytes: file.size,
           totalBytes: file.size,
-          statusText: 'Upload completed successfully!',
+          statusText: 'UPLOAD COMPLETE!',
         });
 
-        // Brief delay for visual completion before revealing result
         setTimeout(() => {
           setIsUploading(false);
           setProgress(null);
@@ -141,13 +148,15 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         }, 500);
       } catch (err: unknown) {
         setIsUploading(false);
-        let detailMessage = 'An unexpected error occurred during upload.';
+        let detailMessage = 'AN ERROR OCCURRED DURING UPLOAD.';
         if (axios.isAxiosError(err)) {
-          if (err.response?.data?.error) {
+          if (err.response?.status === 401) {
+            detailMessage = 'SESSION EXPIRED OR UNAUTHORIZED. PLEASE SIGN IN.';
+            onOpenAuth('login');
+          } else if (err.response?.data?.error) {
             detailMessage = err.response.data.error;
           } else if (err.message.includes('Network Error')) {
-            detailMessage =
-              'Network/CORS error while connecting to Backblaze B2. Check bucket CORS settings.';
+            detailMessage = 'NETWORK ERROR CONNECTING TO BUCKET. VERIFY B2 CORS.';
           } else {
             detailMessage = err.message;
           }
@@ -160,13 +169,13 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           percent: 0,
           loadedBytes: 0,
           totalBytes: file.size,
-          statusText: 'Upload failed',
+          statusText: 'UPLOAD FAILED',
           error: detailMessage,
         });
         setValidationError(detailMessage);
       }
     },
-    [onUploadSuccess, setIsUploading]
+    [user, onOpenAuth, onUploadSuccess, setIsUploading]
   );
 
   // Global Clipboard Paste Listener (Ctrl+V / Cmd+V)
@@ -182,7 +191,6 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           e.preventDefault();
           const file = item.getAsFile();
           if (file) {
-            // Assign meaningful name for pasted screenshot if generic
             const ext = item.type.split('/')[1] || 'png';
             const namedFile = new File(
               [file],
@@ -202,7 +210,6 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
     };
   }, [isUploading, processUpload]);
 
-  // Drag and Drop handlers
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -222,22 +229,19 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
     if (isUploading) return;
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFile = e.dataTransfer.files[0];
-      processUpload(droppedFile);
+      processUpload(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const selected = e.target.files[0];
-      processUpload(selected);
-      // Reset input value so re-selecting same file triggers change
+      processUpload(e.target.files[0]);
       e.target.value = '';
     }
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4">
       {/* Hidden File Input */}
       <input
         ref={fileInputRef}
@@ -245,134 +249,164 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         accept="image/jpeg,image/png,image/webp,image/gif"
         className="hidden"
         onChange={handleFileSelect}
-        disabled={isUploading}
+        disabled={isUploading || !user}
       />
 
-      {/* Validation / Error Banner */}
+      {/* Validation / Error Banner (Neo-Brutalist) */}
       {validationError && (
-        <div className="mb-4 flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 animate-fadeIn">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-400" />
-          <div className="flex-1 text-sm font-medium leading-relaxed">
+        <div className="flex items-start gap-3 p-4 bg-neo-pink/20 border-[3px] border-black shadow-brutal text-black animate-fadeIn">
+          <div className="p-1 bg-neo-pink border-2 border-black flex-shrink-0">
+            <AlertCircle className="w-5 h-5 text-black stroke-[2.5]" />
+          </div>
+          <div className="flex-1 font-mono font-bold text-xs uppercase leading-relaxed pt-0.5">
             {validationError}
           </div>
           <button
             onClick={() => setValidationError(null)}
-            className="text-red-400/80 hover:text-red-300 transition-colors p-1 rounded-lg"
+            className="w-6 h-6 bg-white border-2 border-black flex items-center justify-center font-black hover:bg-black hover:text-white transition-colors"
             title="Dismiss error"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4 stroke-[3]" />
           </button>
         </div>
       )}
 
-      {/* Dropzone Container */}
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => !isUploading && fileInputRef.current?.click()}
-        className={`relative group rounded-2xl border-2 border-dashed p-8 md:p-12 transition-all duration-300 text-center cursor-pointer select-none overflow-hidden ${
-          isDragging
-            ? 'border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/10 scale-[1.01]'
-            : isUploading
-            ? 'border-zinc-700 bg-zinc-900/60 cursor-wait'
-            : 'border-zinc-700/80 hover:border-brand-500/60 bg-zinc-900/40 hover:bg-zinc-900/80 hover:shadow-xl hover:shadow-brand-500/5'
-        }`}
-      >
-        {/* Subtle Ambient Glow */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-brand-600/5 via-transparent to-indigo-600/5 pointer-events-none" />
+      {/* Auth Gate Banner (If not logged in) */}
+      {!user ? (
+        <div className="p-8 md:p-10 bg-white border-[4px] border-black shadow-brutal-lg text-center space-y-6">
+          <div className="inline-block p-4 bg-neo-yellow border-[3px] border-black shadow-brutal -rotate-2">
+            <Lock className="w-10 h-10 text-black stroke-[2.5]" />
+          </div>
 
-        {isUploading && progress ? (
-          /* Active Upload State */
-          <div className="py-4 px-2 max-w-lg mx-auto">
-            <div className="flex justify-center mb-5">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-center text-brand-400">
+          <div className="space-y-2 max-w-lg mx-auto">
+            <div className="inline-block px-3 py-1 bg-neo-pink border-2 border-black font-mono font-black text-xs uppercase shadow-brutal-sm">
+              ACCESS LOCKED
+            </div>
+            <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-black">
+              Sign In To Upload Images
+            </h3>
+            <p className="font-mono text-xs text-black/70 font-semibold leading-relaxed">
+              Create an account or log in to generate permanent shareable URLs, direct-to-cloud B2 storage, and manage your image history.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={() => onOpenAuth('login')}
+              className="px-6 py-3.5 bg-neo-yellow hover:bg-[#ffea30] active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center gap-2"
+            >
+              <span>Sign In Now</span>
+              <ArrowRight className="w-4 h-4 stroke-[3]" />
+            </button>
+            <button
+              onClick={() => onOpenAuth('register')}
+              className="px-6 py-3.5 bg-white hover:bg-neo-bg active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all"
+            >
+              Register Free
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Neo-Brutalist Active Dropzone */
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => !isUploading && fileInputRef.current?.click()}
+          className={`relative group bg-white border-[4px] border-black p-8 md:p-12 transition-all duration-200 text-center select-none cursor-pointer ${
+            isDragging
+              ? 'bg-neo-yellow/30 shadow-brutal-xl scale-[1.01]'
+              : isUploading
+              ? 'bg-neo-bg cursor-wait shadow-brutal'
+              : 'shadow-brutal-lg hover:shadow-brutal-xl hover:-translate-x-0.5 hover:-translate-y-0.5'
+          }`}
+        >
+          {isUploading && progress ? (
+            /* Uploading Progress State */
+            <div className="py-4 px-2 max-w-lg mx-auto space-y-6">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 bg-neo-yellow border-[3px] border-black shadow-brutal flex items-center justify-center text-black">
                   {progress.stage === 'completed' ? (
-                    <CheckCircle2 className="w-8 h-8 text-emerald-400 animate-bounce" />
+                    <CheckCircle2 className="w-9 h-9 text-black stroke-[3]" />
                   ) : (
-                    <Loader2 className="w-8 h-8 animate-spin text-brand-400" />
+                    <Loader2 className="w-9 h-9 animate-spin text-black stroke-[3]" />
                   )}
                 </div>
               </div>
-            </div>
 
-            <h3 className="text-lg font-semibold text-zinc-100 mb-1 truncate px-4">
-              {selectedFileName || 'Uploading file...'}
-            </h3>
-            <p className="text-sm text-zinc-400 mb-6 font-medium">
-              {progress.statusText}
-            </p>
+              <div className="space-y-1">
+                <h3 className="text-xl font-black uppercase tracking-tight text-black truncate px-4">
+                  {selectedFileName || 'UPLOADING FILE...'}
+                </h3>
+                <p className="font-mono font-bold text-xs uppercase text-black/80">
+                  {progress.statusText}
+                </p>
+              </div>
 
-            {/* Real-time Progress Bar */}
-            <div className="w-full bg-zinc-800 rounded-full h-3 p-0.5 overflow-hidden border border-zinc-700">
-              <div
-                className={`h-full rounded-full transition-all duration-300 ease-out ${
-                  progress.stage === 'completed'
-                    ? 'bg-emerald-500'
-                    : 'bg-gradient-to-r from-brand-500 to-indigo-500'
-                }`}
-                style={{ width: `${progress.percent}%` }}
-              />
-            </div>
+              {/* Chunky Brutalist Progress Bar */}
+              <div className="w-full bg-white border-[3px] border-black h-8 p-1 shadow-brutal overflow-hidden">
+                <div
+                  className={`h-full border-r-2 border-black transition-all duration-200 ${
+                    progress.stage === 'completed' ? 'bg-neo-green' : 'bg-neo-yellow'
+                  }`}
+                  style={{ width: `${progress.percent}%` }}
+                />
+              </div>
 
-            <div className="flex justify-between items-center mt-3 text-xs text-zinc-400 font-mono">
-              <span>
-                {progress.loadedBytes > 0
-                  ? `${formatBytes(progress.loadedBytes)} / ${formatBytes(
-                      progress.totalBytes
-                    )}`
-                  : 'Preparing transfer'}
-              </span>
-              <span className="font-semibold text-zinc-200">
-                {progress.percent}%
-              </span>
-            </div>
-          </div>
-        ) : (
-          /* Idle / Ready to Upload State */
-          <div className="flex flex-col items-center justify-center gap-4 py-2">
-            <div className="w-20 h-20 rounded-3xl bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center text-zinc-400 group-hover:text-brand-400 group-hover:border-brand-500/40 group-hover:scale-110 transition-all duration-300 shadow-inner">
-              <UploadCloud className="w-10 h-10 transition-transform group-hover:-translate-y-1" />
-            </div>
-
-            <div className="space-y-1.5">
-              <h3 className="text-lg md:text-xl font-bold text-zinc-100">
-                Drag & drop your image here, or{' '}
-                <span className="text-brand-400 underline decoration-brand-500/40 underline-offset-4 group-hover:decoration-brand-400">
-                  browse
+              <div className="flex justify-between items-center text-xs font-mono font-black text-black">
+                <span>
+                  {progress.loadedBytes > 0
+                    ? `${formatBytes(progress.loadedBytes)} / ${formatBytes(progress.totalBytes)}`
+                    : 'INITIALIZING'}
                 </span>
-              </h3>
-              <p className="text-sm text-zinc-400">
-                Supports direct clipboard paste with{' '}
-                <kbd className="px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-xs font-mono text-zinc-300">
-                  Ctrl + V
-                </kbd>{' '}
-                or{' '}
-                <kbd className="px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-xs font-mono text-zinc-300">
-                  ⌘ + V
-                </kbd>
-              </p>
+                <span className="px-2 py-0.5 bg-black text-white">{progress.percent}%</span>
+              </div>
             </div>
+          ) : (
+            /* Ready to Upload State */
+            <div className="flex flex-col items-center justify-center gap-5 py-2">
+              <div className="w-20 h-20 bg-neo-yellow border-[3px] border-black shadow-brutal flex items-center justify-center text-black group-hover:rotate-3 group-hover:scale-105 transition-all">
+                <UploadCloud className="w-10 h-10 stroke-[2.5]" />
+              </div>
 
-            {/* Badges / Specs */}
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-zinc-800/90 text-zinc-300 border border-zinc-700/60">
-                <ImageIcon className="w-3.5 h-3.5 text-brand-400" />
-                JPEG, PNG, WebP, GIF
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-zinc-800/90 text-zinc-300 border border-zinc-700/60">
-                <FileUp className="w-3.5 h-3.5 text-emerald-400" />
-                Max 10MB
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-zinc-800/90 text-zinc-300 border border-zinc-700/60">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                Direct S3 Presigned
-              </span>
+              <div className="space-y-2">
+                <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-black">
+                  Drag & Drop Image Here, or{' '}
+                  <span className="bg-neo-yellow px-1 border-2 border-black underline decoration-2">
+                    Browse
+                  </span>
+                </h3>
+                <p className="font-mono text-xs font-bold text-black/80">
+                  Clipboard paste supported:{' '}
+                  <kbd className="px-2 py-1 bg-black text-white text-xs font-mono font-bold shadow-brutal-sm">
+                    CTRL + V
+                  </kbd>{' '}
+                  or{' '}
+                  <kbd className="px-2 py-1 bg-black text-white text-xs font-mono font-bold shadow-brutal-sm">
+                    ⌘ + V
+                  </kbd>
+                </p>
+              </div>
+
+              {/* Neo-brutalist Badges */}
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border-2 border-black font-mono font-black text-xs uppercase shadow-brutal-sm -rotate-1">
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  PNG, JPG, WEBP, GIF
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-green/30 border-2 border-black font-mono font-black text-xs uppercase shadow-brutal-sm rotate-1">
+                  <FileUp className="w-3.5 h-3.5" />
+                  MAX 10MB
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-cyan/30 border-2 border-black font-mono font-black text-xs uppercase shadow-brutal-sm -rotate-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  DIRECT S3 PRESIGNED
+                </span>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

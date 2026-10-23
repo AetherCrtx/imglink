@@ -4,26 +4,30 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+        neo: {
+          bg: '#FAF8F0',
+          card: '#FFFFFF',
+          yellow: '#FFE600',
+          cyan: '#38BDF8',
+          pink: '#FF6B8B',
+          green: '#4ADE80',
+          purple: '#C084FC',
+          orange: '#FB923C',
+          black: '#000000',
         },
       },
-      animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      boxShadow: {
+        'brutal-sm': '2px 2px 0px 0px #000000',
+        'brutal': '4px 4px 0px 0px #000000',
+        'brutal-lg': '6px 6px 0px 0px #000000',
+        'brutal-xl': '8px 8px 0px 0px #000000',
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Menlo', 'monospace'],
       },
     },
   },

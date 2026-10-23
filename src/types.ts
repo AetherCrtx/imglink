@@ -1,9 +1,17 @@
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+}
+
 export interface ImageRecord {
   id: string;
   fileKey: string;
   originalName: string;
   mimeType: string;
   sizeBytes: number;
+  userId?: string | null;
+  isOwner?: boolean;
   createdAt: string;
 }
 
@@ -28,4 +36,5 @@ export interface UploadUrlResponse {
   uploadUrl: string;
   fileKey: string;
   expiresIn: number;
+  userId?: string;
 }

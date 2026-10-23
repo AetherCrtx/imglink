@@ -3,6 +3,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
 import { s3Client, BUCKET_NAME } from './_lib/s3';
+import { getAuthUser } from './_lib/auth';
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
@@ -21,13 +22,13 @@ const MIME_EXTENSION_MAP: Record<string, string> = {
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set CORS headers
+  // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
   if (req.method === 'OPTIONS') {
@@ -39,7 +40,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { fileName, mimeType, sizeBytes } = req.body || {};
+    // Require authentication
+    const user = getAuthUser(req);
+    if (!user) {
+      return res.status(401).json({
+        error: 'Authentication required. Please sign in to upload images.',
+      });
+    }
+
+    // Safely parse body if sent as string or object
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        return res.status(400).json({ error: 'Malformed JSON payload.' });
+      }
+    }
+
+    const { fileName, mimeType, sizeBytes } = body || {};
 
     if (!fileName || typeof fileName !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid "fileName".' });
@@ -47,20 +66,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!mimeType || typeof mimeType !== 'string' || !ALLOWED_MIME_TYPES.has(mimeType)) {
       return res.status(400).json({
-        error: `Invalid "mimeType". Allowed types: ${Array.from(ALLOWED_MIME_TYPES).join(', ')}`,
+        error: `Invalid "mimeType". Allowed: ${Array.from(ALLOWED_MIME_TYPES).join(', ')}`,
       });
     }
 
     const parsedSize = Number(sizeBytes);
     if (isNaN(parsedSize) || parsedSize <= 0 || parsedSize > MAX_SIZE_BYTES) {
       return res.status(400).json({
-        error: `Invalid "sizeBytes". File size must be between 1 byte and 10MB (10485760 bytes).`,
+        error: `Invalid file size. Maximum allowed size is 10MB (10485760 bytes).`,
       });
     }
 
     if (!BUCKET_NAME) {
       return res.status(500).json({
-        error: 'Server storage configuration error: B2_BUCKET_NAME is not set.',
+        error: 'Storage error: B2_BUCKET_NAME is not configured.',
       });
     }
 
@@ -87,6 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       uploadUrl,
       fileKey,
       expiresIn: 300,
+      userId: user.id,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown server error';

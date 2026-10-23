@@ -4,31 +4,49 @@ import { desc, eq, or } from 'drizzle-orm';
 import { db } from './_lib/db';
 import { images } from './_lib/schema';
 import { s3Client, BUCKET_NAME } from './_lib/s3';
+import { getAuthUser } from './_lib/auth';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set CORS headers
+  // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // GET: Fetch the 20 most recent images ordered by createdAt DESC
+  const currentUser = getAuthUser(req);
+
+  // GET: Fetch images (optionally filtered by current user)
   if (req.method === 'GET') {
     try {
-      const records = await db
-        .select()
-        .from(images)
-        .orderBy(desc(images.createdAt))
-        .limit(20);
+      const filter = req.query.filter as string;
+      const query = db.select().from(images);
 
-      return res.status(200).json(records);
+      let records;
+      if (filter === 'mine' && currentUser) {
+        records = await query
+          .where(eq(images.userId, currentUser.id))
+          .orderBy(desc(images.createdAt))
+          .limit(30);
+      } else {
+        records = await query
+          .orderBy(desc(images.createdAt))
+          .limit(24);
+      }
+
+      // Attach ownership indicator
+      const enriched = records.map((rec) => ({
+        ...rec,
+        isOwner: currentUser ? rec.userId === currentUser.id : false,
+      }));
+
+      return res.status(200).json(enriched);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown database error';
       console.error('[images GET error]:', err);
@@ -36,10 +54,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // POST: Save uploaded image metadata to Neon DB and return the created record
+  // POST: Save uploaded image metadata
   if (req.method === 'POST') {
     try {
-      const { fileKey, originalName, mimeType, sizeBytes } = req.body || {};
+      let body = req.body;
+      if (typeof body === 'string') {
+        try {
+          body = JSON.parse(body);
+        } catch {
+          return res.status(400).json({ error: 'Malformed JSON body.' });
+        }
+      }
+
+      const { fileKey, originalName, mimeType, sizeBytes } = body || {};
 
       if (!fileKey || typeof fileKey !== 'string') {
         return res.status(400).json({ error: 'Missing or invalid "fileKey".' });
@@ -65,10 +92,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           originalName: originalName.trim(),
           mimeType: mimeType.trim(),
           sizeBytes: parsedSize,
+          userId: currentUser ? currentUser.id : null,
         })
         .returning();
 
-      return res.status(201).json(inserted[0]);
+      return res.status(201).json({
+        ...inserted[0],
+        isOwner: true,
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown database error';
       console.error('[images POST error]:', err);
@@ -76,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // DELETE: Accept id or fileKey, delete from Backblaze B2 and Neon DB
+  // DELETE: Delete from S3 and Neon DB
   if (req.method === 'DELETE') {
     try {
       const id = (req.query.id as string) || (req.body?.id as string);
@@ -86,7 +117,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Must provide either "id" or "fileKey" to delete.' });
       }
 
-      // Find the record in database first
       const existing = await db
         .select()
         .from(images)
@@ -105,7 +135,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const target = existing[0];
 
-      // 1. Delete object from Backblaze B2 storage
+      // Ownership authorization: if image has an owner, only the owner can delete
+      if (target.userId && currentUser && target.userId !== currentUser.id) {
+        return res.status(403).json({ error: 'You do not have permission to delete this image.' });
+      }
+
+      // 1. Delete from Backblaze B2 storage
       if (BUCKET_NAME && target.fileKey) {
         try {
           const deleteCommand = new DeleteObjectCommand({
@@ -115,11 +150,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           await s3Client.send(deleteCommand);
         } catch (s3Err) {
           console.warn('[images DELETE S3 warning]:', s3Err);
-          // Continue deleting from DB even if S3 delete reported error
         }
       }
 
-      // 2. Delete record from Neon DB
+      // 2. Delete from Neon DB
       await db.delete(images).where(eq(images.id, target.id));
 
       return res.status(200).json({
@@ -135,5 +169,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  return res.status(405).json({ error: 'Method not allowed. Use GET, POST, or DELETE.' });
+  return res.status(405).json({ error: 'Method not allowed.' });
 }

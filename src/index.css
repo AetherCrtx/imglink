@@ -4,22 +4,28 @@
 
 @layer base {
   body {
-    @apply bg-zinc-950 text-zinc-100 antialiased selection:bg-brand-500/30 selection:text-brand-200;
+    background-color: #FAF8F0;
+    color: #000000;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    background-image: radial-gradient(#d4cfc3 1.2px, transparent 1.2px);
+    background-size: 24px 24px;
+  }
+
+  ::selection {
+    background-color: #FFE600;
+    color: #000000;
   }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Neo-brutalist tactile utilities */
+.brutal-btn {
+  @apply font-black uppercase tracking-wider border-[3px] border-black transition-all duration-150 select-none;
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.brutal-card {
+  @apply bg-white border-[3px] border-black shadow-brutal;
+}
+
+.brutal-input {
+  @apply bg-white border-[3px] border-black font-mono font-medium text-black px-4 py-3 shadow-brutal-sm focus:outline-none focus:shadow-brutal transition-all;
 }

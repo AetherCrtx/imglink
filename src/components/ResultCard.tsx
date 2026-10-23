@@ -60,51 +60,40 @@ export const ResultCard: React.FC<ResultCardProps> = ({
   };
 
   return (
-    <div className="w-full bg-zinc-900/80 border border-zinc-800 rounded-2xl p-6 md:p-8 shadow-2xl backdrop-blur-sm animate-fadeIn">
-      {/* Header Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-zinc-800/80">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
-              Image Uploaded Successfully!
-            </h3>
-            <p className="text-xs text-zinc-400">
-              Your image is securely stored and ready to share instantly.
-            </p>
-          </div>
+    <div className="w-full bg-white border-[4px] border-black shadow-brutal-xl overflow-hidden animate-fadeIn">
+      {/* Neo-brutalist Window Header */}
+      <div className="bg-neo-green border-b-[3px] border-black px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-black" />
+          <span className="font-mono font-black text-xs uppercase tracking-widest text-black">
+            STATUS: 200 OK // IMAGE_DEPLOYED
+          </span>
         </div>
 
         <button
           onClick={onUploadAnother}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm font-semibold transition-all duration-200 border border-zinc-700 hover:border-zinc-600 active:scale-95"
+          className="px-3 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-black uppercase text-xs shadow-brutal-sm transition-all flex items-center gap-1 active:translate-x-0.5 active:translate-y-0.5"
         >
-          <PlusCircle className="w-4 h-4 text-brand-400" />
-          Upload Another
+          <PlusCircle className="w-3.5 h-3.5" />
+          <span>Upload Another</span>
         </button>
       </div>
 
-      {/* Main Content Grid: Preview + Links */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-6">
+      {/* Main Content Area */}
+      <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Image Preview & Details */}
-        <div className="lg:col-span-5 flex flex-col gap-3">
-          <div className="relative group aspect-video md:aspect-[4/3] w-full rounded-xl overflow-hidden bg-zinc-950/80 border border-zinc-800 flex items-center justify-center">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px] opacity-40" />
-
+        <div className="lg:col-span-5 flex flex-col gap-4">
+          <div className="relative aspect-video lg:aspect-[4/3] w-full bg-neo-bg border-[3px] border-black shadow-brutal overflow-hidden flex items-center justify-center p-2">
             {!imageLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm animate-pulse">
-                Loading preview...
+              <div className="font-mono font-bold text-xs uppercase text-black/60 animate-pulse">
+                Rendering preview...
               </div>
             )}
-
             <img
               src={publicUrl}
               alt={image.originalName}
               onLoad={() => setImageLoaded(true)}
-              className={`max-h-full max-w-full object-contain transition-opacity duration-300 z-10 ${
+              className={`max-h-full max-w-full object-contain border-2 border-black/10 transition-opacity duration-200 ${
                 imageLoaded ? 'opacity-100' : 'opacity-0'
               }`}
             />
@@ -113,32 +102,32 @@ export const ResultCard: React.FC<ResultCardProps> = ({
               href={publicUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="absolute top-3 right-3 p-2 rounded-lg bg-black/60 text-zinc-300 hover:text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity z-20 border border-white/10"
-              title="Open full image in new tab"
+              className="absolute top-3 right-3 p-2 bg-white border-2 border-black text-black hover:bg-neo-yellow shadow-brutal-sm transition-all"
+              title="Open full view"
             >
-              <ExternalLink className="w-4 h-4" />
+              <ExternalLink className="w-4 h-4 stroke-[2.5]" />
             </a>
           </div>
 
-          {/* Metadata badges */}
-          <div className="flex flex-wrap items-center justify-between text-xs text-zinc-400 px-1">
-            <span className="truncate max-w-[200px] font-medium text-zinc-300">
+          {/* Details Bar */}
+          <div className="p-3 bg-neo-bg border-2 border-black shadow-brutal-sm flex items-center justify-between font-mono text-xs">
+            <span className="font-black text-black truncate max-w-[200px]">
               {image.originalName}
             </span>
-            <div className="flex items-center gap-2 font-mono">
-              <span className="uppercase text-[10px] px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 bg-black text-white font-bold uppercase text-[10px]">
                 {image.mimeType.replace('image/', '')}
               </span>
-              <span>{formatBytes(image.sizeBytes)}</span>
+              <span className="font-bold text-black">{formatBytes(image.sizeBytes)}</span>
             </div>
           </div>
         </div>
 
         {/* Right: Snippet Selector & Copy Buttons */}
-        <div className="lg:col-span-7 flex flex-col justify-between gap-5">
+        <div className="lg:col-span-7 flex flex-col justify-between gap-6">
           <div className="space-y-4">
-            {/* Snippet Format Tabs */}
-            <div className="flex rounded-xl bg-zinc-950 p-1 border border-zinc-800">
+            {/* Format Switcher */}
+            <div className="grid grid-cols-3 gap-2 p-1 bg-neo-bg border-[3px] border-black shadow-brutal-sm">
               {(Object.keys(snippets) as SnippetType[]).map((type) => {
                 const item = snippets[type];
                 const isActive = activeTab === type;
@@ -146,58 +135,55 @@ export const ResultCard: React.FC<ResultCardProps> = ({
                   <button
                     key={type}
                     onClick={() => setActiveTab(type)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                    className={`py-2 px-2 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
                       isActive
-                        ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
+                        ? 'bg-black text-white shadow-sm'
+                        : 'bg-transparent text-black hover:bg-black/10'
                     }`}
                   >
                     {item.icon}
-                    <span>{item.label}</span>
+                    <span className="truncate">{item.label}</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Active Snippet Output Field */}
+            {/* Active Snippet Output */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center text-xs text-zinc-400 font-medium">
-                <span>{snippets[activeTab].label}</span>
-                <span className="text-zinc-500">Click copy to save to clipboard</span>
-              </div>
+              <label className="block text-xs font-black uppercase tracking-wider text-black">
+                {snippets[activeTab].label} Output
+              </label>
 
-              <div className="relative flex items-center">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   readOnly
                   value={snippets[activeTab].value}
-                  className="w-full bg-zinc-950 text-zinc-200 text-sm font-mono rounded-xl pl-4 pr-28 py-3.5 border border-zinc-800 focus:outline-none focus:border-brand-500/60 select-all transition-colors"
+                  className="flex-1 bg-white border-[3px] border-black font-mono text-sm px-4 py-3 shadow-brutal-sm focus:outline-none select-all text-black"
                 />
                 <button
                   onClick={() => handleCopy(activeTab, snippets[activeTab].value)}
-                  className={`absolute right-2 top-2 bottom-2 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ${
-                    copiedType === activeTab
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-brand-600 hover:bg-brand-500 text-white active:scale-95 shadow-md shadow-brand-600/20'
+                  className={`px-6 py-3 border-[3px] border-black font-black uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 shadow-brutal hover:shadow-brutal-lg ${
+                    copiedType === activeTab ? 'bg-neo-green text-black' : 'bg-neo-yellow text-black'
                   }`}
                 >
                   {copiedType === activeTab ? (
                     <>
-                      <Check className="w-3.5 h-3.5" />
-                      Copied!
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Copied!</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3.5 h-3.5" />
-                      Copy
+                      <Copy className="w-4 h-4 stroke-[3]" />
+                      <span>Copy</span>
                     </>
                   )}
                 </button>
               </div>
             </div>
 
-            {/* Quick Access to other snippets */}
-            <div className="pt-2 space-y-2.5">
+            {/* Other Snippets Quick Cards */}
+            <div className="space-y-2 pt-2">
               {(Object.keys(snippets) as SnippetType[])
                 .filter((type) => type !== activeTab)
                 .map((type) => {
@@ -205,36 +191,27 @@ export const ResultCard: React.FC<ResultCardProps> = ({
                   return (
                     <div
                       key={type}
-                      className="flex items-center justify-between p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80 hover:border-zinc-700 transition-colors"
+                      className="p-3 bg-white border-2 border-black shadow-brutal-sm flex items-center justify-between gap-3"
                     >
-                      <div className="flex items-center gap-2.5 overflow-hidden pr-3">
-                        <span className="text-zinc-400">{item.icon}</span>
-                        <span className="text-xs font-medium text-zinc-400">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <span className="p-1 bg-neo-bg border border-black">{item.icon}</span>
+                        <span className="font-mono font-bold text-xs uppercase text-black">
                           {item.label}:
                         </span>
-                        <span className="text-xs text-zinc-300 font-mono truncate">
+                        <span className="font-mono text-xs text-black/70 truncate">
                           {item.value}
                         </span>
                       </div>
+
                       <button
                         onClick={() => handleCopy(type, item.value)}
-                        className={`flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all ${
+                        className={`flex-shrink-0 px-3 py-1.5 border-2 border-black font-mono font-black text-xs uppercase transition-all shadow-brutal-sm active:translate-x-0.5 active:translate-y-0.5 ${
                           copiedType === type
-                            ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                            : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700'
+                            ? 'bg-neo-green text-black'
+                            : 'bg-white hover:bg-neo-yellow text-black'
                         }`}
                       >
-                        {copiedType === type ? (
-                          <>
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            Copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            Copy
-                          </>
-                        )}
+                        {copiedType === type ? 'Copied' : 'Copy'}
                       </button>
                     </div>
                   );
@@ -242,16 +219,15 @@ export const ResultCard: React.FC<ResultCardProps> = ({
             </div>
           </div>
 
-          {/* Bottom Actions */}
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="pt-2 flex justify-end">
             <a
               href={publicUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-xs font-semibold text-brand-400 hover:text-brand-300 transition-colors"
+              className="inline-flex items-center gap-1.5 font-mono font-black text-xs uppercase text-black hover:bg-neo-yellow px-2 py-1 border-2 border-black shadow-brutal-sm transition-all"
             >
-              Open in new browser tab
-              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Open in new window</span>
+              <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
             </a>
           </div>
         </div>
