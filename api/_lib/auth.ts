@@ -5,7 +5,7 @@ import { ensureEnvLoaded } from './env';
 
 ensureEnvLoaded();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'piclink-secret-key-neon-backblaze-2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'imglink-secret-key-neon-2026';
 export const NEON_AUTH_BASE_URL =
   process.env.NEON_AUTH_BASE_URL ||
   'https://ep-divine-butterfly-azwhepvg.neonauth.c-3.ap-southeast-1.aws.neon.tech/neondb/auth';
@@ -81,6 +81,7 @@ export async function getAuthUserAsync(req: {
       if (
         key === '__Secure-neon-auth.session_token' ||
         key === 'neon-auth.session_token' ||
+        key === 'imglink_token' ||
         key === 'snaplink_token'
       ) {
         token = decodeURIComponent(val);

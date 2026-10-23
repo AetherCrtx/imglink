@@ -21,8 +21,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (action === 'google') {
     try {
       const origin =
+        process.env.APP_URL ||
         req.headers.origin ||
-        (req.headers.referer ? new URL(req.headers.referer as string).origin : 'http://localhost:5173');
+        (req.headers.referer ? new URL(req.headers.referer as string).origin : 'https://imglink.web.id');
 
       const neonAuthRes = await fetch(`${NEON_AUTH_BASE_URL}/sign-in/social`, {
         method: 'POST',
@@ -87,7 +88,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST' && action === 'register') {
     try {
       const { email, password, name } = req.body || {};
-      const origin = req.headers.origin || 'http://localhost:5173';
+      const origin =
+        process.env.APP_URL || req.headers.origin || 'https://imglink.web.id';
 
       const neonRes = await fetch(`${NEON_AUTH_BASE_URL}/sign-up/email`, {
         method: 'POST',
@@ -132,7 +134,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST' && (action === 'login' || !action)) {
     try {
       const { email, password } = req.body || {};
-      const origin = req.headers.origin || 'http://localhost:5173';
+      const origin =
+        process.env.APP_URL || req.headers.origin || 'https://imglink.web.id';
 
       const neonRes = await fetch(`${NEON_AUTH_BASE_URL}/sign-in/email`, {
         method: 'POST',

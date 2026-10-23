@@ -1,26 +1,28 @@
-# SnapLink (Image-to-URL Platform)
+# ImgLink (Direct Cloud Image-to-URL Platform)
 
-A modern, high-performance full-stack web application to upload images and convert them into instant, shareable public URLs. Built with direct-to-cloud upload architecture to bypass server payload limits, end-to-end private bucket security, and serverless database integration.
+> **Live Production Domain:** [https://imglink.web.id](https://imglink.web.id)
+
+A modern, high-performance, neo-brutalist full-stack web application to upload images and convert them into instant, shareable public URLs. Built with direct-to-cloud upload architecture to bypass server payload limits, end-to-end private bucket security, Neon Auth (with Google OAuth), and Neon serverless database integration.
 
 ---
 
 ## Architecture Overview
 
 ```text
-[ React Frontend (Vite) ]
+[ React Frontend (Vite) @ imglink.web.id ]
        │
-       ├── 1. Request Upload Authorization (POST /api/upload-url) ──> [ Vercel Serverless ]
+       ├── 1. Request Upload Authorization (POST /api/upload-url) ──> [ Serverless API ]
        │                                                                  (Generate S3 Presigned PUT)
        ├── 2. Receive Presigned PUT URL <─────────────────────────────
        │
-       ├── 3. Upload Binary Directly via Axios PUT ──────────────────> [ Backblaze B2 (Private Bucket) ]
+       ├── 3. Upload Binary Directly via Axios PUT ──────────────────> [ Neon Object Storage (images) ]
        │      (with real-time upload progress)
        │
-       ├── 4. Save Image Metadata (POST /api/images) ────────────────> [ Vercel Serverless ]
+       ├── 4. Save Image Metadata (POST /api/images) ────────────────> [ Serverless API ]
        │                                                                  │
        │                                                                  └──> [ Neon PostgreSQL (Drizzle) ]
        │
-       └── 5. Public Access (GET /v/:key) ───────────────────────────> [ Vercel Serverless Gateway ]
+       └── 5. Public Access (GET /v/:key) ───────────────────────────> [ Serverless Gateway ]
                                                                           │ (S3 Presigned GET + 307 Redirect)
                                                                           └──> [ Cached Image Delivery ]
 ```
@@ -29,10 +31,12 @@ A modern, high-performance full-stack web application to upload images and conve
 
 ## Tech Stack
 
-- **Frontend:** React 18, TypeScript, Tailwind CSS, Lucide React, Axios.
-- **Backend:** Node.js on Vercel Serverless Functions (`/api` directory).
+- **Frontend:** React 18, TypeScript, Tailwind CSS (Neo-Brutalism), Lucide React, Axios.
+- **Backend:** Node.js Vercel Serverless Functions (`/api` directory) + Built-in Vite Dev API plugin.
 - **Database:** Neon Serverless PostgreSQL with Drizzle ORM (`drizzle-kit`).
-- **Object Storage:** Backblaze B2 (Private Bucket) via AWS SDK v3 (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`).
+- **Object Storage:** Neon Object Storage (S3-compatible) via AWS SDK v3.
+- **Authentication:** Neon Auth (Managed Better Auth) with Google OAuth & Email/Password.
+- **Production Domain:** `https://imglink.web.id`
 
 ---
 

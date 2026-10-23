@@ -19,7 +19,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onOpenAuth, onLogout }) =>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black tracking-tighter uppercase text-black">
-              Snap<span className="bg-neo-yellow px-1.5 py-0.5 border-2 border-black ml-0.5 shadow-brutal-sm">Link</span>
+              Img<span className="bg-neo-yellow px-1.5 py-0.5 border-2 border-black ml-0.5 shadow-brutal-sm">Link</span>
             </span>
             <span className="hidden sm:inline-block font-mono font-black text-[10px] uppercase tracking-wider px-2 py-0.5 bg-neo-orange text-black border-2 border-black shadow-brutal-sm rotate-1">
               v1.0 // CLOUD

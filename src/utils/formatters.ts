@@ -40,8 +40,8 @@ export function formatRelativeDate(dateString: string): string {
 }
 
 export function getPublicViewUrl(fileKey: string): string {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && window.location?.origin) {
     return `${window.location.origin}/v/${fileKey}`;
   }
-  return `/v/${fileKey}`;
+  return `https://imglink.web.id/v/${fileKey}`;
 }

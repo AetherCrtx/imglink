@@ -1,5 +1,6 @@
 {
-  "name": "piclink",
+  "name": "imglink",
+  "description": "ImgLink - Direct Cloud Image-to-URL Platform (Neo-Brutalism)",
   "private": true,
   "version": "1.0.0",
   "type": "module",

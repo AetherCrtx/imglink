@@ -341,7 +341,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
               <span className="w-3 h-3 bg-neo-red border-2 border-black rounded-full inline-block" />
               <span className="w-3 h-3 bg-neo-yellow border-2 border-black rounded-full inline-block" />
               <span className="w-3 h-3 bg-neo-lime border-2 border-black rounded-full inline-block" />
-              <span className="ml-2 tracking-wider">SNAPLINK // DIRECT_STORAGE_CLIENT</span>
+              <span className="ml-2 tracking-wider">IMGLINK // DIRECT_STORAGE_CLIENT</span>
             </div>
             <span className="px-2 py-0.5 bg-black text-white text-[10px] tracking-widest font-black">
               {isUploading ? 'UPLOADING' : 'ONLINE'}
