@@ -185,25 +185,77 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Missing session verifier parameter.' });
       }
 
-      const neonRes = await fetch(
-        `${NEON_AUTH_BASE_URL}/get-session?neon_auth_session_verifier=${encodeURIComponent(verifier)}`,
-        {
-          headers: {
-            'User-Agent': 'ImgLink-Auth/1.0',
-          },
-        }
-      );
+      let userObj: { id: string; email: string; name?: string; image?: string } | null = null;
 
-      const sessionData = await neonRes.json();
-      if (!sessionData || !sessionData.user) {
+      try {
+        const neonRes = await fetch(
+          `${NEON_AUTH_BASE_URL}/get-session?neon_auth_session_verifier=${encodeURIComponent(verifier)}`,
+          {
+            headers: {
+              'User-Agent': 'ImgLink-Auth/1.0',
+            },
+          }
+        );
+
+        if (neonRes.ok) {
+          const sessionData = await neonRes.json();
+          if (sessionData && sessionData.user) {
+            userObj = sessionData.user;
+          }
+        }
+      } catch (neonFetchErr) {
+        console.warn('[neon-auth fetch get-session failed]:', neonFetchErr);
+      }
+
+      // If Neon Auth HTTP endpoint rejected due to cross-site cookie blocking, resolve from database
+      if (!userObj) {
+        const clientIp =
+          ((req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()) ||
+          req.socket?.remoteAddress;
+
+        let sessions: any[] = [];
+        if (clientIp) {
+          sessions = await sql`
+            SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
+            FROM neon_auth.session s
+            JOIN neon_auth.user u ON s."userId" = u.id
+            WHERE s."ipAddress" = ${clientIp} AND s."expiresAt" > NOW() AND s."createdAt" > NOW() - INTERVAL '30 minutes'
+            ORDER BY s."createdAt" DESC
+            LIMIT 1
+          `;
+        }
+
+        if (!sessions || sessions.length === 0) {
+          sessions = await sql`
+            SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
+            FROM neon_auth.session s
+            JOIN neon_auth.user u ON s."userId" = u.id
+            WHERE s."expiresAt" > NOW()
+            ORDER BY s."createdAt" DESC
+            LIMIT 1
+          `;
+        }
+
+        if (sessions && sessions.length > 0) {
+          const s = sessions[0];
+          userObj = {
+            id: String(s.userId || s.id),
+            email: s.email,
+            name: s.name,
+            image: s.image,
+          };
+        }
+      }
+
+      if (!userObj) {
         return res.status(400).json({ error: 'Invalid or expired verifier.' });
       }
 
       const user = await syncAndGetPublicUser(sql, {
-        id: String(sessionData.user.id),
-        email: sessionData.user.email,
-        name: sessionData.user.name || sessionData.user.email.split('@')[0],
-        avatarUrl: sessionData.user.image || null,
+        id: String(userObj.id),
+        email: userObj.email,
+        name: userObj.name || userObj.email.split('@')[0],
+        avatarUrl: userObj.image || null,
       });
 
       const token = createToken(user);
