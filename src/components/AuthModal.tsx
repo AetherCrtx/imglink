@@ -6,18 +6,25 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAuthSuccess: (user: AuthUser) => void;
+  onOpenLegal?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
+  onOpenLegal,
 }) => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(true);
 
   if (!isOpen) return null;
 
   const handleGoogleSignIn = () => {
+    if (!agreedToTerms) {
+      setErrorMessage('You must accept the License & Legal Agreement to continue.');
+      return;
+    }
     setIsGoogleLoading(true);
     setErrorMessage(null);
     // Direct top-level navigation to OAuth gateway
@@ -51,7 +58,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         </div>
 
-        <div className="p-5 sm:p-7 space-y-6 bg-neo-bg">
+        <div className="p-5 sm:p-7 space-y-5 bg-neo-bg">
           {/* Security Notice Banner */}
           <div className="bg-white border-2 border-black p-3.5 shadow-brutal-sm space-y-2">
             <div className="flex items-center gap-2">
@@ -66,6 +73,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </p>
           </div>
 
+          {/* Legal Agreement & Compliance Warning */}
+          <div className="bg-neo-yellow/30 border-2 border-black p-3.5 shadow-brutal-sm space-y-2.5">
+            <div className="text-[10px] font-mono font-black uppercase bg-neo-pink text-black px-2 py-0.5 border border-black inline-block">
+              LEGAL NOTICE // COMPLIANCE
+            </div>
+            <p className="font-mono text-[10px] text-black/90 leading-tight">
+              Zero tolerance for copyrighted material without rights, CSAM, non-consensual content, malware, or unlawful files. Violators are permanently banned and reported to relevant authorities.
+            </p>
+
+            <label className="flex items-start gap-2.5 pt-1 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => {
+                  setAgreedToTerms(e.target.checked);
+                  if (e.target.checked) setErrorMessage(null);
+                }}
+                className="mt-0.5 w-4 h-4 rounded-none border-2 border-black text-black accent-neo-pink cursor-pointer"
+              />
+              <span className="font-mono text-[10px] font-bold text-black leading-snug">
+                I agree to the{' '}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onOpenLegal?.();
+                  }}
+                  className="underline font-black text-black hover:bg-neo-yellow px-0.5"
+                >
+                  License & Legal Agreement
+                </button>
+                , Acceptable Use Policy, and DMCA Copyright rules.
+              </span>
+            </label>
+          </div>
+
           {errorMessage && (
             <div className="p-3 bg-neo-pink border-2 border-black font-mono text-xs font-black uppercase text-black flex items-center gap-2 shadow-brutal-sm">
               <AlertCircle className="w-4 h-4 stroke-[3] flex-shrink-0" />
@@ -77,8 +120,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div className="space-y-3">
             <button
               onClick={handleGoogleSignIn}
-              disabled={isGoogleLoading}
-              className="w-full py-3.5 px-4 bg-white hover:bg-neo-yellow active:translate-x-0.5 active:translate-y-0.5 border-[3px] border-black font-mono font-black text-xs sm:text-sm uppercase tracking-wide text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-3 disabled:opacity-60"
+              disabled={isGoogleLoading || !agreedToTerms}
+              className="w-full py-3.5 px-4 bg-white hover:bg-neo-yellow active:translate-x-0.5 active:translate-y-0.5 border-[3px] border-black font-mono font-black text-xs sm:text-sm uppercase tracking-wide text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isGoogleLoading ? (
                 <>

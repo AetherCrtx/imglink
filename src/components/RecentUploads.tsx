@@ -11,6 +11,9 @@ import {
   Loader2,
   AlertTriangle,
   UserCheck,
+  Lock,
+  ShieldCheck,
+  LogIn,
 } from 'lucide-react';
 import type { ImageRecord, AuthUser } from '../types';
 import { formatBytes, formatRelativeDate, getPublicViewUrl } from '../utils/formatters';
@@ -23,6 +26,7 @@ interface RecentUploadsProps {
   user: AuthUser | null;
   activeFilter: 'all' | 'mine';
   setActiveFilter: (filter: 'all' | 'mine') => void;
+  onOpenAuth?: () => void;
 }
 
 export const RecentUploads: React.FC<RecentUploadsProps> = ({
@@ -33,6 +37,7 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
   user,
   activeFilter,
   setActiveFilter,
+  onOpenAuth,
 }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -78,43 +83,82 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
     { badge: 'bg-neo-purple text-white', border: 'border-black', shadow: 'hover:shadow-brutal' },
   ];
 
+  // If user is unauthenticated, show strict privacy architecture notice
+  if (!user) {
+    return (
+      <div className="w-full bg-white border-[4px] border-black shadow-brutal-lg p-6 sm:p-8 text-center space-y-5">
+        <div className="w-14 h-14 mx-auto bg-neo-pink border-[3px] border-black shadow-brutal flex items-center justify-center -rotate-2">
+          <Lock className="w-7 h-7 text-black stroke-[2.5]" />
+        </div>
+        <div className="space-y-2 max-w-lg mx-auto">
+          <div className="inline-block px-3 py-0.5 bg-neo-yellow border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm">
+            STRICT PRIVACY VAULT // NO PUBLIC BROWSING
+          </div>
+          <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-black">
+            Private Asset Isolation
+          </h3>
+          <p className="font-mono text-xs text-black/80 leading-relaxed">
+            ImgLink enforces zero public directory indexing. Uploaded photos are strictly private to their owner's account and are accessible only via direct CDN links. Other users cannot browse or see your images.
+          </p>
+        </div>
+
+        <button
+          onClick={onOpenAuth}
+          className="px-6 py-3 bg-neo-lime hover:bg-neo-yellow active:translate-x-0.5 active:translate-y-0.5 border-[3px] border-black font-mono font-black text-xs sm:text-sm uppercase text-black shadow-brutal transition-all inline-flex items-center gap-2"
+        >
+          <LogIn className="w-4 h-4 stroke-[3]" />
+          <span>Sign In to Access Your Private Library</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-6">
       {/* Section Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 bg-white border-[3px] border-black shadow-brutal">
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-black flex items-center gap-2">
-            Gallery Archive
-          </h2>
-          <span className="px-2.5 sm:px-3 py-0.5 bg-neo-pink border-2 border-black font-mono font-black text-xs text-black shadow-brutal-sm rotate-1">
-            {images.length} {images.length === 1 ? 'ITEM' : 'ITEMS'}
+          <div className="w-8 h-8 bg-neo-lime border-2 border-black flex items-center justify-center shadow-brutal-sm -rotate-2">
+            <ShieldCheck className="w-4 h-4 stroke-[2.5] text-black" />
+          </div>
+          <div>
+            <h2 className="text-base sm:text-lg font-black uppercase tracking-tight text-black flex items-center gap-2">
+              Your Private Vault
+            </h2>
+            <span className="text-[10px] font-mono font-bold text-black/70 block">
+              Accessible only by your account and direct URL holders
+            </span>
+          </div>
+          <span className="px-2.5 sm:px-3 py-0.5 bg-neo-pink border-2 border-black font-mono font-black text-xs text-black shadow-brutal-sm rotate-1 ml-auto sm:ml-2">
+            {images.length} {images.length === 1 ? 'FILE' : 'FILES'}
           </span>
         </div>
 
         {/* Filter & Refresh Controls */}
         <div className="flex items-center justify-between sm:justify-end gap-2">
-          {user && (
+          {/* Admin audit toggle only */}
+          {user.role === 'admin' && (
             <div className="flex bg-neo-bg border-2 border-black p-0.5 shadow-brutal-sm">
               <button
-                onClick={() => setActiveFilter('all')}
-                className={`min-h-[36px] px-3 py-1 font-mono font-black text-xs uppercase flex items-center transition-all ${
-                  activeFilter === 'all'
-                    ? 'bg-neo-yellow text-black border-2 border-black shadow-brutal-sm'
-                    : 'text-black hover:bg-black/10'
-                }`}
-              >
-                All
-              </button>
-              <button
                 onClick={() => setActiveFilter('mine')}
-                className={`min-h-[36px] px-3 py-1 font-mono font-black text-xs uppercase flex items-center gap-1 transition-all ${
+                className={`min-h-[34px] px-2.5 py-1 font-mono font-black text-[11px] uppercase flex items-center gap-1 transition-all ${
                   activeFilter === 'mine'
                     ? 'bg-neo-cyan text-black border-2 border-black shadow-brutal-sm'
                     : 'text-black hover:bg-black/10'
                 }`}
               >
-                <UserCheck className="w-3.5 h-3.5" />
+                <UserCheck className="w-3 h-3" />
                 Mine
+              </button>
+              <button
+                onClick={() => setActiveFilter('all')}
+                className={`min-h-[34px] px-2.5 py-1 font-mono font-black text-[11px] uppercase flex items-center transition-all ${
+                  activeFilter === 'all'
+                    ? 'bg-neo-yellow text-black border-2 border-black shadow-brutal-sm'
+                    : 'text-black hover:bg-black/10'
+                }`}
+              >
+                Admin Audit
               </button>
             </div>
           )}
@@ -123,7 +167,7 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
             onClick={onRefresh}
             disabled={isLoading}
             className="min-h-[36px] px-3 sm:px-3.5 py-1.5 bg-neo-lime hover:bg-neo-yellow active:translate-x-0.5 active:translate-y-0.5 border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm flex items-center gap-1.5 transition-all disabled:opacity-50 flex-shrink-0"
-            title="Refresh gallery"
+            title="Refresh assets"
           >
             <RefreshCw
               className={`w-3.5 h-3.5 stroke-[2.5] ${isLoading ? 'animate-spin' : ''}`}
@@ -133,7 +177,7 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
         </div>
       </div>
 
-      {/* Loading Skeleton (Neo-Brutalist) */}
+      {/* Loading Skeleton */}
       {isLoading && images.length === 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map((i) => (
@@ -154,17 +198,15 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
 
       {/* Empty State */}
       {!isLoading && images.length === 0 && (
-        <div className="text-center py-16 px-4 bg-white border-[4px] border-black shadow-brutal-lg space-y-4">
-          <div className="w-16 h-16 mx-auto bg-neo-yellow border-[3px] border-black shadow-brutal flex items-center justify-center text-black -rotate-3">
-            <ImageIcon className="w-8 h-8 stroke-[2.5]" />
+        <div className="text-center py-14 px-4 bg-white border-[4px] border-black shadow-brutal-lg space-y-3">
+          <div className="w-14 h-14 mx-auto bg-neo-yellow border-[3px] border-black shadow-brutal flex items-center justify-center text-black -rotate-3">
+            <ImageIcon className="w-7 h-7 stroke-[2.5]" />
           </div>
-          <h3 className="text-xl font-black uppercase tracking-tight text-black">
-            NO IMAGES FOUND
+          <h3 className="text-lg font-black uppercase tracking-tight text-black">
+            NO ASSETS IN YOUR VAULT
           </h3>
           <p className="font-mono text-xs text-black/70 font-semibold max-w-sm mx-auto">
-            {activeFilter === 'mine'
-              ? 'You have not uploaded any images yet under this account.'
-              : 'Your upload history will appear here once images are submitted.'}
+            You have not uploaded any images yet. Upload an image above to generate an instant shareable link.
           </p>
         </div>
       )}

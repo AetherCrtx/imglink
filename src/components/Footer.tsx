@@ -1,7 +1,11 @@
 import React from 'react';
 import { Layers, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  onOpenLegal?: () => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onOpenLegal }) => {
   return (
     <footer className="border-t-[4px] border-black bg-white mt-20 shadow-brutal-sm">
       {/* Neo-brutalist Multi-Color Accent Strip */}
@@ -14,7 +18,7 @@ export const Footer: React.FC = () => {
         <div className="flex-1 bg-neo-orange" />
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left">
             <span className="font-mono font-black text-sm uppercase text-black bg-neo-yellow px-2.5 py-1 border-2 border-black shadow-brutal-sm -rotate-1">
@@ -42,6 +46,35 @@ export const Footer: React.FC = () => {
               <Sparkles className="w-3.5 h-3.5 fill-black stroke-black" />
               UNLIMITED PRO TIER
             </span>
+          </div>
+        </div>
+
+        {/* Legal & Compliance Navigation Row */}
+        <div className="border-t-2 border-black pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <span className="font-mono text-[11px] font-bold text-black/70">
+            imglink.web.id // Private Cloud Asset Vault // All Rights Reserved
+          </span>
+          <div className="flex items-center gap-4 font-mono text-[11px] font-black uppercase text-black">
+            <button
+              onClick={onOpenLegal}
+              className="hover:underline hover:text-neo-pink transition-colors"
+            >
+              Terms of Service
+            </button>
+            <span>//</span>
+            <button
+              onClick={onOpenLegal}
+              className="hover:underline hover:text-neo-pink transition-colors"
+            >
+              Acceptable Use
+            </button>
+            <span>//</span>
+            <button
+              onClick={onOpenLegal}
+              className="hover:underline hover:text-neo-pink transition-colors"
+            >
+              DMCA & Liability
+            </button>
           </div>
         </div>
       </div>

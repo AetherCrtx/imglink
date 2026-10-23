@@ -8,6 +8,7 @@ import { RecentUploads } from './components/RecentUploads';
 import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
 import { ProUpgradeModal } from './components/ProUpgradeModal';
+import { LegalAgreementModal } from './components/LegalAgreementModal';
 import type { ImageRecord, AuthUser } from './types';
 import { initializeAuth, clearAuthSession, setAuthSession } from './utils/auth';
 import { Sparkles, ArrowDown, ShieldCheck, Zap } from 'lucide-react';
@@ -17,7 +18,8 @@ export const App: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState<boolean>(false);
   const [isProModalOpen, setIsProModalOpen] = useState<boolean>(false);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'mine'>('all');
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'mine'>('mine');
 
   const [images, setImages] = useState<ImageRecord[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState<boolean>(true);
@@ -341,11 +343,11 @@ export const App: React.FC = () => {
           <div className="w-full border-t-[3px] border-black" />
           <div className="absolute px-3.5 py-1 sm:px-5 sm:py-1.5 bg-neo-pink border-[3px] border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm sm:shadow-brutal flex items-center gap-2 -rotate-1 hover:rotate-1 transition-transform">
             <ArrowDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
-            <span>GALLERY & ARCHIVE</span>
+            <span>PRIVATE ASSET VAULT</span>
           </div>
         </div>
 
-        {/* Gallery History */}
+        {/* Private Asset History */}
         <section>
           <RecentUploads
             images={images}
@@ -355,17 +357,25 @@ export const App: React.FC = () => {
             user={user}
             activeFilter={activeFilter}
             setActiveFilter={setActiveFilter}
+            onOpenAuth={handleOpenAuth}
           />
         </section>
       </main>
 
-      <Footer />
+      <Footer onOpenLegal={() => setIsLegalModalOpen(true)} />
 
       {/* Authentication Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onAuthSuccess={handleAuthSuccess}
+        onOpenLegal={() => setIsLegalModalOpen(true)}
+      />
+
+      {/* Legal Agreement Modal */}
+      <LegalAgreementModal
+        isOpen={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
       />
 
       {/* Admin Panel Modal */}

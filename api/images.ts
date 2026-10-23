@@ -25,22 +25,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const currentUser = await getAuthUserAsync(req);
 
-  // GET: Fetch images (optionally filtered by current user)
+  // GET: Fetch images (strictly private: scoped only to authenticated owner)
   if (req.method === 'GET') {
     try {
+      if (!currentUser) {
+        // Strict privacy: unauthenticated visitors cannot view or browse any user images
+        return res.status(200).json([]);
+      }
+
       const filter = req.query.filter as string;
       const query = db.select().from(images);
 
       let records;
-      if (filter === 'mine' && currentUser) {
+      // Admins can optionally view all images for content audit / moderation
+      if (currentUser.role === 'admin' && filter === 'all') {
+        records = await query
+          .orderBy(desc(images.createdAt))
+          .limit(50);
+      } else {
+        // Normal users strictly see ONLY their own uploaded files
         records = await query
           .where(eq(images.userId, currentUser.id))
           .orderBy(desc(images.createdAt))
           .limit(50);
-      } else {
-        records = await query
-          .orderBy(desc(images.createdAt))
-          .limit(24);
       }
 
       const enriched = records.map((rec) => ({
