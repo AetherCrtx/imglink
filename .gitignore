@@ -28,5 +28,6 @@ dist-ssr
 .env.production
 .env.development
 
-# Vercel
+# Vercel & Neon
 .vercel
+.neon
