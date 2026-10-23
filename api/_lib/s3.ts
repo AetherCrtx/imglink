@@ -1,27 +1,52 @@
 import { S3Client } from '@aws-sdk/client-s3';
+import { ensureEnvLoaded } from './env';
 
-// Auto-load .env if not loaded (for local Node / dev environments)
-if (!process.env.B2_KEY_ID && typeof process.loadEnvFile === 'function') {
-  try {
-    process.loadEnvFile();
-  } catch {
-    // Ignore if file not found
-  }
+export function getS3Client(): S3Client {
+  ensureEnvLoaded();
+
+  const isB2 = process.env.STORAGE_PROVIDER === 'b2';
+
+  const endpoint = isB2
+    ? process.env.B2_ENDPOINT || 'https://s3.us-east-005.backblazeb2.com'
+    : process.env.AWS_ENDPOINT_URL_S3 ||
+      'https://br-broad-haze-azjye671.storage.c-3.ap-southeast-1.aws.neon.tech';
+
+  const region = isB2
+    ? process.env.B2_REGION || 'us-east-005'
+    : process.env.AWS_REGION || 'ap-southeast-1';
+
+  const accessKeyId = isB2
+    ? process.env.B2_KEY_ID || ''
+    : process.env.AWS_ACCESS_KEY_ID || 'nak_live_a0406dc108dd4bf9bfea9393ec2ec6e9';
+
+  const secretAccessKey = isB2
+    ? process.env.B2_APPLICATION_KEY || ''
+    : process.env.AWS_SECRET_ACCESS_KEY ||
+      'nsk_live_b12d9327bf5442f3211474abde750eec08c38d6f9914303f9818b513f859c9ec';
+
+  return new S3Client({
+    endpoint,
+    region,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+    forcePathStyle: true,
+  });
 }
 
-const endpoint = process.env.B2_ENDPOINT || 'https://s3.us-east-005.backblazeb2.com';
-const region = process.env.B2_REGION || 'us-east-005';
-const accessKeyId = process.env.B2_KEY_ID || '';
-const secretAccessKey = process.env.B2_APPLICATION_KEY || '';
+export function getBucketName(): string {
+  const isB2 = process.env.STORAGE_PROVIDER === 'b2';
+  return isB2 ? process.env.B2_BUCKET_NAME || 'PicUrl-RASSHQA' : 'images';
+}
 
-export const BUCKET_NAME = process.env.B2_BUCKET_NAME || '';
-
-export const s3Client = new S3Client({
-  endpoint,
-  region,
-  credentials: {
-    accessKeyId,
-    secretAccessKey,
+export const s3Client = new Proxy({} as S3Client, {
+  get(_target, prop) {
+    const instance = getS3Client() as any;
+    const value = instance[prop];
+    return typeof value === 'function' ? value.bind(instance) : value;
   },
-  forcePathStyle: true,
 });
+
+export const BUCKET_NAME = 'images';
+export const STORAGE_PROVIDER_NAME = 'Neon Object Storage';

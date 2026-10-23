@@ -29,15 +29,15 @@ export const Header: React.FC<HeaderProps> = ({ user, onOpenAuth, onLogout }) =>
 
         {/* Feature Badges (Desktop) */}
         <div className="hidden md:flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-neo-cyan/20 border-2 border-black font-mono font-bold text-[11px] uppercase shadow-brutal-sm">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-neo-yellow/30 border-2 border-black font-mono font-bold text-[11px] uppercase shadow-brutal-sm">
             <Zap className="w-3.5 h-3.5 fill-black" />
-            Direct S3
+            Neon Storage
           </span>
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-neo-green/20 border-2 border-black font-mono font-bold text-[11px] uppercase shadow-brutal-sm">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-neo-green/30 border-2 border-black font-mono font-bold text-[11px] uppercase shadow-brutal-sm">
             <Shield className="w-3.5 h-3.5" />
-            Private Bucket
+            Google Auth
           </span>
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-neo-purple/20 border-2 border-black font-mono font-bold text-[11px] uppercase shadow-brutal-sm">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-neo-purple/30 border-2 border-black font-mono font-bold text-[11px] uppercase shadow-brutal-sm">
             <Sparkles className="w-3.5 h-3.5" />
             Neon DB
           </span>
@@ -48,8 +48,12 @@ export const Header: React.FC<HeaderProps> = ({ user, onOpenAuth, onLogout }) =>
           {user ? (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-neo-bg border-2 border-black shadow-brutal-sm">
-                <div className="w-6 h-6 bg-black text-white flex items-center justify-center font-black text-xs font-mono">
-                  {user.name.charAt(0).toUpperCase()}
+                <div className="w-7 h-7 bg-black text-white border border-black flex items-center justify-center font-black text-xs font-mono overflow-hidden">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    user.name.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="text-xs font-black uppercase tracking-tight text-black leading-none truncate max-w-[120px]">

@@ -71,7 +71,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         percent: 10,
         loadedBytes: 0,
         totalBytes: file.size,
-        statusText: '1/3 GETTING PRESIGNED B2 URL...',
+        statusText: '1/3 GETTING PRESIGNED STORAGE URL...',
       });
 
       try {
@@ -87,19 +87,33 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
 
         const { uploadUrl, fileKey } = urlResponse.data;
 
-        // Step 2: Upload directly to Backblaze B2 using PUT
+        // Step 2: Upload directly to Cloud Storage using PUT
         setProgress({
           stage: 'uploading',
           percent: 20,
           loadedBytes: 0,
           totalBytes: file.size,
-          statusText: '2/3 STREAMING DIRECTLY TO B2 CLOUD...',
+          statusText: '2/3 STREAMING DIRECTLY TO OBJECT STORAGE...',
         });
 
         await axios.put(uploadUrl, file, {
           headers: {
             'Content-Type': file.type,
           },
+          transformRequest: [
+            (data, headers) => {
+              // Direct S3/Bucket presigned URLs reject requests containing custom Authorization headers
+              if (headers) {
+                delete headers.Authorization;
+                delete headers.authorization;
+                if (headers.common) {
+                  delete headers.common.Authorization;
+                  delete headers.common.authorization;
+                }
+              }
+              return data;
+            },
+          ],
           onUploadProgress: (progressEvent) => {
             if (progressEvent.total) {
               const uploadFraction = progressEvent.loaded / progressEvent.total;
@@ -156,7 +170,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           } else if (err.response?.data?.error) {
             detailMessage = err.response.data.error;
           } else if (err.message.includes('Network Error')) {
-            detailMessage = 'NETWORK ERROR CONNECTING TO BUCKET. VERIFY B2 CORS.';
+            detailMessage = 'NETWORK ERROR CONNECTING TO STORAGE BUCKET.';
           } else {
             detailMessage = err.message;
           }

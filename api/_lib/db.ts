@@ -1,21 +1,24 @@
 import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle, NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import * as schema from './schema';
+import { ensureEnvLoaded } from './env';
 
-// Auto-load .env if not loaded (for local Node / dev environments)
-if (!process.env.DATABASE_URL && typeof process.loadEnvFile === 'function') {
-  try {
-    process.loadEnvFile();
-  } catch {
-    // Ignore if file not found
-  }
+export function getDb(): NeonHttpDatabase<typeof schema> {
+  ensureEnvLoaded();
+
+  const connectionString =
+    process.env.DATABASE_URL ||
+    'postgresql://neondb_owner:npg_Gjp2AgVy8ieL@ep-divine-butterfly-azwhepvg-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+
+  const sql = neon(connectionString);
+  return drizzle(sql, { schema });
 }
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  console.warn('[DB] Warning: DATABASE_URL is not set.');
-}
-
-const sql = neon(connectionString || '');
-export const db = drizzle(sql, { schema });
+// Transparent proxy to always query with the latest environment configuration
+export const db = new Proxy({} as NeonHttpDatabase<typeof schema>, {
+  get(_target, prop) {
+    const instance = getDb() as any;
+    const value = instance[prop];
+    return typeof value === 'function' ? value.bind(instance) : value;
+  },
+});

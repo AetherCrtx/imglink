@@ -4,7 +4,7 @@ import { desc, eq, or } from 'drizzle-orm';
 import { db } from './_lib/db';
 import { images } from './_lib/schema';
 import { s3Client, BUCKET_NAME } from './_lib/s3';
-import { getAuthUser } from './_lib/auth';
+import { getAuthUserAsync } from './_lib/auth';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS Headers
@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  const currentUser = getAuthUser(req);
+  const currentUser = await getAuthUserAsync(req);
 
   // GET: Fetch images (optionally filtered by current user)
   if (req.method === 'GET') {
@@ -40,7 +40,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .limit(24);
       }
 
-      // Attach ownership indicator
       const enriched = records.map((rec) => ({
         ...rec,
         isOwner: currentUser ? rec.userId === currentUser.id : false,
@@ -107,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // DELETE: Delete from S3 and Neon DB
+  // DELETE: Delete from storage and Neon DB
   if (req.method === 'DELETE') {
     try {
       const id = (req.query.id as string) || (req.body?.id as string);
@@ -135,12 +134,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const target = existing[0];
 
-      // Ownership authorization: if image has an owner, only the owner can delete
+      // Ownership authorization
       if (target.userId && currentUser && target.userId !== currentUser.id) {
         return res.status(403).json({ error: 'You do not have permission to delete this image.' });
       }
 
-      // 1. Delete from Backblaze B2 storage
+      // 1. Delete from S3 storage
       if (BUCKET_NAME && target.fileKey) {
         try {
           const deleteCommand = new DeleteObjectCommand({

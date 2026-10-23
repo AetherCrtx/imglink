@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
-import { s3Client, BUCKET_NAME } from './_lib/s3';
-import { getAuthUser } from './_lib/auth';
+import { s3Client, BUCKET_NAME, STORAGE_PROVIDER_NAME } from './_lib/s3';
+import { getAuthUserAsync } from './_lib/auth';
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
@@ -40,15 +40,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Require authentication
-    const user = getAuthUser(req);
+    // Authenticate user via Neon Auth or JWT
+    const user = await getAuthUserAsync(req);
     if (!user) {
       return res.status(401).json({
         error: 'Authentication required. Please sign in to upload images.',
       });
     }
 
-    // Safely parse body if sent as string or object
     let body = req.body;
     if (typeof body === 'string') {
       try {
@@ -79,11 +78,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!BUCKET_NAME) {
       return res.status(500).json({
-        error: 'Storage error: B2_BUCKET_NAME is not configured.',
+        error: 'Storage error: Bucket name is not configured.',
       });
     }
 
-    // Determine extension safely
     const originalExt = fileName.split('.').pop()?.toLowerCase() || '';
     const safeExt =
       originalExt && ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(originalExt)
@@ -97,16 +95,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       Bucket: BUCKET_NAME,
       Key: fileKey,
       ContentType: mimeType,
-      ContentLength: parsedSize,
     });
 
-    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
+    const uploadUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: 300,
+      signableHeaders: new Set(['host', 'content-type']),
+    });
 
     return res.status(200).json({
       uploadUrl,
       fileKey,
       expiresIn: 300,
       userId: user.id,
+      storageProvider: STORAGE_PROVIDER_NAME,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown server error';

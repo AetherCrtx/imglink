@@ -7,7 +7,7 @@ import { ResultCard } from './components/ResultCard';
 import { RecentUploads } from './components/RecentUploads';
 import { AuthModal } from './components/AuthModal';
 import type { ImageRecord, AuthUser } from './types';
-import { initializeAuth, clearAuthSession } from './utils/auth';
+import { initializeAuth, clearAuthSession, setAuthSession } from './utils/auth';
 import { Sparkles, ArrowDown, ShieldCheck, Zap } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -27,17 +27,25 @@ export const App: React.FC = () => {
     const existing = initializeAuth();
     if (existing) {
       setUser(existing);
-      // Verify session with backend
-      axios
-        .get<{ user: AuthUser }>('/api/auth')
-        .then((res) => {
-          if (res.data.user) setUser(res.data.user);
-        })
-        .catch(() => {
+    }
+
+    // Check with backend (validates Neon Auth Google session and JWT)
+    axios
+      .get<{ user: AuthUser; token?: string }>('/api/auth')
+      .then((res) => {
+        if (res.data.user) {
+          setUser(res.data.user);
+          if (res.data.token) {
+            setAuthSession(res.data.token, res.data.user);
+          }
+        }
+      })
+      .catch(() => {
+        if (!existing) {
           clearAuthSession();
           setUser(null);
-        });
-    }
+        }
+      });
   }, []);
 
   const fetchRecentImages = useCallback(async () => {

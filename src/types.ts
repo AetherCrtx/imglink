@@ -2,6 +2,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  avatarUrl?: string | null;
 }
 
 export interface ImageRecord {
@@ -37,4 +38,5 @@ export interface UploadUrlResponse {
   fileKey: string;
   expiresIn: number;
   userId?: string;
+  storageProvider?: string;
 }

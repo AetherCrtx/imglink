@@ -1,8 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { eq } from 'drizzle-orm';
-import { db } from './_lib/db';
-import { users } from './_lib/schema';
-import { hashPassword, verifyPassword, createToken, getAuthUser } from './_lib/auth';
+import { getAuthUserAsync, NEON_AUTH_BASE_URL, createToken } from './_lib/auth';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS Headers
@@ -20,143 +17,164 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const action = (req.query.action as string) || req.body?.action;
 
-  // GET: Check Current User (me)
-  if (req.method === 'GET' || action === 'me') {
+  // 1. Google OAuth Initiation
+  if (action === 'google') {
     try {
-      const user = getAuthUser(req);
-      if (!user) {
-        return res.status(401).json({ error: 'Unauthorized. Please sign in.' });
+      const origin =
+        req.headers.origin ||
+        (req.headers.referer ? new URL(req.headers.referer as string).origin : 'http://localhost:5173');
+
+      const neonAuthRes = await fetch(`${NEON_AUTH_BASE_URL}/sign-in/social`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: String(origin),
+        },
+        body: JSON.stringify({
+          provider: 'google',
+          callbackURL: String(origin),
+        }),
+      });
+
+      const data = await neonAuthRes.json();
+      if (data.url) {
+        return res.status(200).json({ url: data.url });
       }
-
-      // Refresh user details from DB
-      const existing = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          name: users.name,
-          createdAt: users.createdAt,
-        })
-        .from(users)
-        .where(eq(users.id, user.id))
-        .limit(1);
-
-      if (existing.length === 0) {
-        return res.status(404).json({ error: 'User no longer exists.' });
-      }
-
-      return res.status(200).json({ user: existing[0] });
+      return res.status(neonAuthRes.status).json(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      return res.status(500).json({ error: 'Failed to verify session', details: message });
+      const message = err instanceof Error ? err.message : 'Google OAuth initialization failed';
+      console.error('[auth google error]:', err);
+      return res.status(500).json({ error: message });
     }
   }
 
-  // POST: Register or Login
-  if (req.method === 'POST') {
-    const { email, password, name } = req.body || {};
-
-    // 1. REGISTER
-    if (action === 'register') {
-      if (!email || typeof email !== 'string' || !email.includes('@')) {
-        return res.status(400).json({ error: 'A valid email address is required.' });
+  // 2. Check Session (Me)
+  if (req.method === 'GET' || action === 'me') {
+    try {
+      const user = await getAuthUserAsync(req);
+      if (user) {
+        return res.status(200).json({ user });
       }
 
-      if (!password || typeof password !== 'string' || password.length < 6) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters.' });
-      }
-
-      const userName = (typeof name === 'string' && name.trim()) || email.split('@')[0];
-
-      try {
-        const cleanEmail = email.trim().toLowerCase();
-
-        // Check if email already registered
-        const existing = await db
-          .select({ id: users.id })
-          .from(users)
-          .where(eq(users.email, cleanEmail))
-          .limit(1);
-
-        if (existing.length > 0) {
-          return res.status(409).json({ error: 'An account with this email already exists.' });
-        }
-
-        const passwordHash = await hashPassword(password);
-        const [newUser] = await db
-          .insert(users)
-          .values({
-            email: cleanEmail,
-            passwordHash,
-            name: userName,
-          })
-          .returning({
-            id: users.id,
-            email: users.email,
-            name: users.name,
+      // Check Neon Auth directly via cookie if present
+      const cookieHeader = req.headers.cookie;
+      if (cookieHeader) {
+        const checkRes = await fetch(`${NEON_AUTH_BASE_URL}/get-session`, {
+          headers: { Cookie: cookieHeader },
+        });
+        const sessionData = await checkRes.json();
+        if (sessionData?.user) {
+          return res.status(200).json({
+            user: {
+              id: sessionData.user.id,
+              name: sessionData.user.name,
+              email: sessionData.user.email,
+              avatarUrl: sessionData.user.image || null,
+            },
+            token: sessionData.session?.token,
           });
-
-        const token = createToken(newUser);
-        return res.status(201).json({
-          user: newUser,
-          token,
-          message: 'Account created successfully!',
-        });
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        console.error('[auth register error]:', err);
-        return res.status(500).json({ error: 'Failed to register account', details: message });
-      }
-    }
-
-    // 2. LOGIN
-    if (action === 'login' || !action) {
-      if (!email || typeof email !== 'string') {
-        return res.status(400).json({ error: 'Email is required.' });
-      }
-
-      if (!password || typeof password !== 'string') {
-        return res.status(400).json({ error: 'Password is required.' });
-      }
-
-      try {
-        const cleanEmail = email.trim().toLowerCase();
-        const existing = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, cleanEmail))
-          .limit(1);
-
-        if (existing.length === 0) {
-          return res.status(401).json({ error: 'Invalid email or password.' });
         }
-
-        const user = existing[0];
-        const isValid = await verifyPassword(password, user.passwordHash);
-        if (!isValid) {
-          return res.status(401).json({ error: 'Invalid email or password.' });
-        }
-
-        const token = createToken({
-          id: user.id,
-          email: user.email,
-          name: user.name,
-        });
-
-        return res.status(200).json({
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-          },
-          token,
-          message: 'Signed in successfully!',
-        });
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        console.error('[auth login error]:', err);
-        return res.status(500).json({ error: 'Failed to authenticate', details: message });
       }
+
+      return res.status(401).json({ error: 'Unauthorized. Please sign in.' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to verify session';
+      return res.status(500).json({ error: message });
     }
+  }
+
+  // 3. Email Register / Sign Up via Neon Auth
+  if (req.method === 'POST' && action === 'register') {
+    try {
+      const { email, password, name } = req.body || {};
+      const origin = req.headers.origin || 'http://localhost:5173';
+
+      const neonRes = await fetch(`${NEON_AUTH_BASE_URL}/sign-up/email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: String(origin),
+        },
+        body: JSON.stringify({
+          email: String(email).trim().toLowerCase(),
+          password: String(password),
+          name: String(name || email.split('@')[0]),
+        }),
+      });
+
+      const data = await neonRes.json();
+      if (!neonRes.ok) {
+        return res.status(neonRes.status).json({
+          error: data.message || 'Registration failed. Email may already be registered.',
+        });
+      }
+
+      const user = {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        avatarUrl: data.user.image || null,
+      };
+
+      return res.status(201).json({
+        user,
+        token: data.token,
+        message: 'Account created successfully with Neon Auth!',
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Registration error';
+      console.error('[auth register error]:', err);
+      return res.status(500).json({ error: message });
+    }
+  }
+
+  // 4. Email Login via Neon Auth
+  if (req.method === 'POST' && (action === 'login' || !action)) {
+    try {
+      const { email, password } = req.body || {};
+      const origin = req.headers.origin || 'http://localhost:5173';
+
+      const neonRes = await fetch(`${NEON_AUTH_BASE_URL}/sign-in/email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: String(origin),
+        },
+        body: JSON.stringify({
+          email: String(email).trim().toLowerCase(),
+          password: String(password),
+        }),
+      });
+
+      const data = await neonRes.json();
+      if (!neonRes.ok) {
+        return res.status(neonRes.status).json({
+          error: data.message || 'Invalid email or password.',
+        });
+      }
+
+      const user = {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        avatarUrl: data.user.image || null,
+      };
+
+      return res.status(200).json({
+        user,
+        token: data.token,
+        message: 'Signed in successfully with Neon Auth!',
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Authentication error';
+      console.error('[auth login error]:', err);
+      return res.status(500).json({ error: message });
+    }
+  }
+
+  // 5. Sign Out
+  if (action === 'logout') {
+    return res.status(200).json({ message: 'Signed out successfully.' });
   }
 
   return res.status(405).json({ error: 'Method not allowed.' });
