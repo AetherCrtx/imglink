@@ -11,6 +11,7 @@ import { LegalAgreementModal } from './components/LegalAgreementModal';
 import { SecretAdminGate } from './components/SecretAdminGate';
 import type { ImageRecord, AuthUser } from './types';
 import { initializeAuth, clearAuthSession, setAuthSession } from './utils/auth';
+import { computeSha256, ADMIN_GATE_FINGERPRINT } from './utils/security';
 import { Sparkles, ArrowDown, ShieldCheck, Zap } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -18,11 +19,7 @@ export const App: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isProModalOpen, setIsProModalOpen] = useState<boolean>(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
-  const [isSecretRouteActive, setIsSecretRouteActive] = useState<boolean>(() => {
-    const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
-    return path === '/rashqaandreanfitrahsulaemanganteng';
-  });
-  const [activeFilter, setActiveFilter] = useState<'all' | 'mine'>('mine');
+  const [isSecretRouteActive, setIsSecretRouteActive] = useState<boolean>(false);
 
   const [images, setImages] = useState<ImageRecord[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState<boolean>(true);
@@ -125,13 +122,28 @@ export const App: React.FC = () => {
       });
   }, []);
 
-  // Listen to browser navigation to detect secret admin route
+  // Listen to browser navigation to detect secret admin route via cryptographic fingerprint
   useEffect(() => {
-    const checkRoute = () => {
-      const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
-      setIsSecretRouteActive(path === '/rashqaandreanfitrahsulaemanganteng');
+    const checkRoute = async () => {
+      const cleanPath = window.location.pathname
+        .replace(/^\/+/, '')
+        .replace(/\/+$/, '')
+        .toLowerCase();
+
+      if (!cleanPath) {
+        setIsSecretRouteActive(false);
+        return;
+      }
+
+      try {
+        const hash = await computeSha256(cleanPath);
+        setIsSecretRouteActive(hash === ADMIN_GATE_FINGERPRINT);
+      } catch {
+        setIsSecretRouteActive(false);
+      }
     };
 
+    checkRoute();
     window.addEventListener('popstate', checkRoute);
     return () => window.removeEventListener('popstate', checkRoute);
   }, []);
@@ -139,9 +151,7 @@ export const App: React.FC = () => {
   const fetchRecentImages = useCallback(async () => {
     setIsLoadingImages(true);
     try {
-      const response = await axios.get<ImageRecord[]>('/api/images', {
-        params: { filter: activeFilter },
-      });
+      const response = await axios.get<ImageRecord[]>('/api/images');
       if (Array.isArray(response.data)) {
         setImages(response.data);
       }
@@ -150,7 +160,7 @@ export const App: React.FC = () => {
     } finally {
       setIsLoadingImages(false);
     }
-  }, [activeFilter]);
+  }, []);
 
   useEffect(() => {
     fetchRecentImages();
@@ -173,7 +183,6 @@ export const App: React.FC = () => {
   const handleLogout = () => {
     clearAuthSession();
     setUser(null);
-    setActiveFilter('all');
     axios.post('/api/auth', { action: 'logout' }).catch(() => {});
     setActionNotice({
       message: 'LOGGED OUT SUCCESSFULLY.',
@@ -368,8 +377,6 @@ export const App: React.FC = () => {
             onRefresh={fetchRecentImages}
             onDelete={handleDeleteImage}
             user={user}
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
             onOpenAuth={handleOpenAuth}
           />
         </section>

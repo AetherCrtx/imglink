@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Lock, ShieldAlert, KeyRound, ArrowRight, Home, AlertCircle } from 'lucide-react';
+import axios from 'axios';
+import { Lock, ShieldAlert, KeyRound, ArrowRight, Home, AlertCircle, Loader2 } from 'lucide-react';
 import { AdminPanel } from './AdminPanel';
 
 interface SecretAdminGateProps {
@@ -12,30 +13,50 @@ export const SecretAdminGate: React.FC<SecretAdminGateProps> = ({
   onExit,
 }) => {
   const [password, setPassword] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isUnlocked, setIsUnlocked] = useState(() => {
-    return (
-      sessionStorage.getItem('imglink_admin_secret') === '020709' ||
-      localStorage.getItem('imglink_admin_secret') === '020709'
-    );
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+    return Boolean(sessionStorage.getItem('imglink_admin_token'));
   });
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.trim() === '020709') {
-      try {
-        sessionStorage.setItem('imglink_admin_secret', '020709');
-        localStorage.setItem('imglink_admin_secret', '020709');
-      } catch {}
-      setIsUnlocked(true);
-      setError(null);
-    } else {
-      setError('ACCESS DENIED // INVALID CLEARANCE KEY');
+    if (!password.trim() || isVerifying) return;
+
+    setIsVerifying(true);
+    setError(null);
+
+    try {
+      const res = await axios.post<{ valid: boolean; adminToken?: string; error?: string }>(
+        '/api/auth',
+        {
+          action: 'verify-admin-key',
+          key: password.trim(),
+        }
+      );
+
+      if (res.data.valid && res.data.adminToken) {
+        sessionStorage.setItem('imglink_admin_token', res.data.adminToken);
+        setIsUnlocked(true);
+        setError(null);
+      } else {
+        setError(res.data.error || 'ACCESS DENIED // INVALID CLEARANCE KEY');
+        setPassword('');
+      }
+    } catch (err: unknown) {
+      let msg = 'ACCESS DENIED // INVALID CLEARANCE KEY';
+      if (axios.isAxiosError(err) && err.response?.data?.error) {
+        msg = err.response.data.error;
+      }
+      setError(msg);
       setPassword('');
+    } finally {
+      setIsVerifying(false);
     }
   };
 
   const handleClosePanel = () => {
+    sessionStorage.removeItem('imglink_admin_token');
     onExit();
   };
 
@@ -63,7 +84,7 @@ export const SecretAdminGate: React.FC<SecretAdminGateProps> = ({
                 Restricted Console
               </h2>
               <span className="text-[10px] font-mono font-bold text-black/75 block">
-                Route: /rashqaandreanfitrahsulaemanganteng
+                SECURE ADMINISTRATIVE GATEWAY
               </span>
             </div>
           </div>
@@ -79,7 +100,7 @@ export const SecretAdminGate: React.FC<SecretAdminGateProps> = ({
               </span>
             </div>
             <p className="font-mono text-[11px] leading-relaxed text-black/80">
-              This terminal is accessible exclusively through secret routing. Enter the master administrative passkey to unlock the user and member management console.
+              This terminal is accessible exclusively through secret routing. Enter the master administrative passkey to unlock the member management console.
             </p>
           </div>
 
@@ -103,9 +124,10 @@ export const SecretAdminGate: React.FC<SecretAdminGateProps> = ({
                     setPassword(e.target.value);
                     if (error) setError(null);
                   }}
+                  disabled={isVerifying}
                   autoFocus
                   placeholder="Enter secret key..."
-                  className="w-full bg-white border-[3px] border-black font-mono text-sm px-3.5 py-2.5 pr-10 shadow-brutal-sm focus:outline-none focus:shadow-brutal transition-all text-black placeholder:text-black/40"
+                  className="w-full bg-white border-[3px] border-black font-mono text-sm px-3.5 py-2.5 pr-10 shadow-brutal-sm focus:outline-none focus:shadow-brutal transition-all text-black placeholder:text-black/40 disabled:opacity-50"
                 />
                 <KeyRound className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-black/60 pointer-events-none" />
               </div>
@@ -113,10 +135,20 @@ export const SecretAdminGate: React.FC<SecretAdminGateProps> = ({
 
             <button
               type="submit"
-              className="w-full py-3 px-4 bg-neo-lime hover:bg-neo-yellow active:translate-x-0.5 active:translate-y-0.5 border-[3px] border-black font-mono font-black text-xs sm:text-sm uppercase tracking-wide text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-2"
+              disabled={isVerifying}
+              className="w-full py-3 px-4 bg-neo-lime hover:bg-neo-yellow active:translate-x-0.5 active:translate-y-0.5 border-[3px] border-black font-mono font-black text-xs sm:text-sm uppercase tracking-wide text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <span>Unlock Admin Console</span>
-              <ArrowRight className="w-4 h-4 stroke-[3]" />
+              {isVerifying ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin stroke-[3]" />
+                  <span>Verifying Clearance...</span>
+                </>
+              ) : (
+                <>
+                  <span>Unlock Admin Console</span>
+                  <ArrowRight className="w-4 h-4 stroke-[3]" />
+                </>
+              )}
             </button>
           </form>
 

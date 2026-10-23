@@ -33,19 +33,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [filterTier, setFilterTier] = useState<'all' | 'pending' | 'pro' | 'free'>('all');
   const [notice, setNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const getAdminKey = () =>
-    sessionStorage.getItem('imglink_admin_secret') ||
-    localStorage.getItem('imglink_admin_secret') ||
-    '020709';
+  const getAdminToken = () =>
+    sessionStorage.getItem('imglink_admin_token') || '';
 
   const fetchMembers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const key = getAdminKey();
+      const token = getAdminToken();
       const res = await axios.get<{ members: AdminMemberRecord[] }>('/api/auth', {
-        params: { action: 'admin-members', adminKey: key },
+        params: { action: 'admin-members', adminToken: token },
         headers: {
-          'x-admin-key': key,
+          'x-admin-token': token,
+          Authorization: token ? `Bearer ${token}` : undefined,
         },
       });
       if (Array.isArray(res.data.members)) {
@@ -82,20 +81,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setActionLoadingId(targetUserId);
     setNotice(null);
     try {
-      const key = getAdminKey();
+      const token = getAdminToken();
       await axios.post(
         '/api/auth',
         {
           action: 'admin-pro-action',
-          adminKey: key,
+          adminToken: token,
           targetUserId,
           decision,
           tier,
         },
         {
-          params: { adminKey: key },
+          params: { adminToken: token },
           headers: {
-            'x-admin-key': key,
+            'x-admin-token': token,
+            Authorization: token ? `Bearer ${token}` : undefined,
           },
         }
       );

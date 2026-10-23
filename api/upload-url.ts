@@ -4,6 +4,12 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
 import { s3Client, BUCKET_NAME } from './_lib/s3.js';
 import { getAuthUserAsync } from './_lib/auth.js';
+import {
+  getClientIp,
+  checkRateLimit,
+  applySecurityHeaders,
+  sanitizeFileName,
+} from './_lib/security.js';
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
@@ -22,7 +28,7 @@ const MIME_EXTENSION_MAP: Record<string, string> = {
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS & Security Headers
+  // CORS & Security Defensive Headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -30,12 +36,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  applySecurityHeaders(res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  // Rate Limiting Shield for Upload URL generation
+  const clientIp = getClientIp(req);
+  const rateLimit = checkRateLimit(clientIp, 'upload');
+  if (!rateLimit.allowed) {
+    return res.status(429).json({
+      error: `Upload rate limit reached. Please retry in ${rateLimit.retryAfterSeconds} seconds.`,
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    });
   }
 
   if (req.method !== 'POST') {

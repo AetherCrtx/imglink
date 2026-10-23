@@ -9,27 +9,45 @@ import {
   type AuthUser,
 } from './_lib/auth.js';
 import { ensureEnvLoaded } from './_lib/env.js';
+import {
+  getClientIp,
+  checkRateLimit,
+  recordFailedAuthAttempt,
+  resetFailedAuthAttempts,
+  verifyAdminSecret,
+  createAdminToken,
+  verifyAdminToken,
+  applySecurityHeaders,
+} from './_lib/security.js';
 
 ensureEnvLoaded();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS & Security Headers
+  // CORS & Security Defensive Headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-Admin-Key, x-admin-key, X-Admin-Secret, x-admin-secret'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-Admin-Key, x-admin-key, X-Admin-Secret, x-admin-secret, X-Admin-Token, x-admin-token'
   );
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  applySecurityHeaders(res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   const action = (req.query.action as string) || req.body?.action;
+  const clientIp = getClientIp(req);
+
+  // Anti-DDoS and Brute-Force Rate Limiting
+  const rateLimit = checkRateLimit(clientIp, action === 'verify-admin-key' ? 'auth' : 'general');
+  if (!rateLimit.allowed) {
+    return res.status(429).json({
+      error: `Too many requests. Defense shield active. Please retry in ${rateLimit.retryAfterSeconds} seconds.`,
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    });
+  }
   const dbUrl =
     process.env.DATABASE_URL ||
     'postgresql://neondb_owner:npg_Gjp2AgVy8ieL@ep-divine-butterfly-azwhepvg-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
@@ -325,18 +343,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // 5. Secret Admin Passkey Verification
+  // 5. Secret Admin Passkey Verification (Strict server-side verification)
   if (action === 'verify-admin-key') {
     const key = String(req.body?.key || req.query.key || '').trim();
-    if (key === '020709') {
-      return res.status(200).json({ valid: true, message: 'Clearance verified.' });
+    if (!key) {
+      return res.status(400).json({ valid: false, error: 'Administrative passkey required.' });
     }
-    return res.status(401).json({ valid: false, error: 'Invalid admin clearance passkey.' });
+
+    const isValid = verifyAdminSecret(key);
+    if (isValid) {
+      resetFailedAuthAttempts(clientIp);
+      const adminToken = createAdminToken();
+      return res.status(200).json({
+        valid: true,
+        adminToken,
+        message: 'Clearance verified. Admin session granted.',
+      });
+    }
+
+    const { remainingAttempts } = recordFailedAuthAttempt(clientIp);
+    return res.status(401).json({
+      valid: false,
+      error:
+        remainingAttempts > 0
+          ? `ACCESS DENIED // INVALID CLEARANCE KEY (${remainingAttempts} attempts remaining).`
+          : 'ACCESS DENIED // GATEWAY TEMPORARILY LOCKED DUE TO SECURITY PROTOCOL.',
+    });
   }
 
   // 6. Admin: List Members
   if (action === 'admin-members') {
     try {
+      const adminToken =
+        (req.headers['x-admin-token'] as string) ||
+        (req.query.adminToken as string) ||
+        req.body?.adminToken;
       const adminKey =
         (req.headers['x-admin-key'] as string) ||
         (req.headers['x-admin-secret'] as string) ||
@@ -346,8 +387,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         req.body?.key;
       const user = await getAuthUserAsync(req);
 
-      const isAuthorized =
-        adminKey === '020709' || (user && user.role === 'admin');
+      const isTokenValid = adminToken ? verifyAdminToken(adminToken) : false;
+      const isKeyValid = adminKey ? verifyAdminSecret(adminKey) : false;
+      const isAuthorized = isTokenValid || isKeyValid || (user && user.role === 'admin');
 
       if (!isAuthorized) {
         return res.status(403).json({ error: 'Access denied. Secret admin clearance required.' });
@@ -381,6 +423,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 7. Admin: Approve / Reject / Manage Member Tier
   if (action === 'admin-pro-action') {
     try {
+      const adminToken =
+        (req.headers['x-admin-token'] as string) ||
+        (req.query.adminToken as string) ||
+        req.body?.adminToken;
       const adminKey =
         (req.headers['x-admin-key'] as string) ||
         (req.headers['x-admin-secret'] as string) ||
@@ -390,8 +436,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         req.body?.key;
       const user = await getAuthUserAsync(req);
 
-      const isAuthorized =
-        adminKey === '020709' || (user && user.role === 'admin');
+      const isTokenValid = adminToken ? verifyAdminToken(adminToken) : false;
+      const isKeyValid = adminKey ? verifyAdminSecret(adminKey) : false;
+      const isAuthorized = isTokenValid || isKeyValid || (user && user.role === 'admin');
 
       if (!isAuthorized) {
         return res.status(403).json({ error: 'Access denied. Secret admin clearance required.' });

@@ -10,7 +10,6 @@ import {
   ImageIcon,
   Loader2,
   AlertTriangle,
-  UserCheck,
   Lock,
   ShieldCheck,
   LogIn,
@@ -24,8 +23,6 @@ interface RecentUploadsProps {
   onRefresh: () => void;
   onDelete: (id: string, fileKey: string) => Promise<void>;
   user: AuthUser | null;
-  activeFilter: 'all' | 'mine';
-  setActiveFilter: (filter: 'all' | 'mine') => void;
   onOpenAuth?: () => void;
 }
 
@@ -35,8 +32,6 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
   onRefresh,
   onDelete,
   user,
-  activeFilter,
-  setActiveFilter,
   onOpenAuth,
 }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -134,34 +129,8 @@ export const RecentUploads: React.FC<RecentUploadsProps> = ({
           </span>
         </div>
 
-        {/* Filter & Refresh Controls */}
+        {/* Refresh Controls */}
         <div className="flex items-center justify-between sm:justify-end gap-2">
-          {/* Admin audit toggle only */}
-          {user.role === 'admin' && (
-            <div className="flex bg-neo-bg border-2 border-black p-0.5 shadow-brutal-sm">
-              <button
-                onClick={() => setActiveFilter('mine')}
-                className={`min-h-[34px] px-2.5 py-1 font-mono font-black text-[11px] uppercase flex items-center gap-1 transition-all ${
-                  activeFilter === 'mine'
-                    ? 'bg-neo-cyan text-black border-2 border-black shadow-brutal-sm'
-                    : 'text-black hover:bg-black/10'
-                }`}
-              >
-                <UserCheck className="w-3 h-3" />
-                Mine
-              </button>
-              <button
-                onClick={() => setActiveFilter('all')}
-                className={`min-h-[34px] px-2.5 py-1 font-mono font-black text-[11px] uppercase flex items-center transition-all ${
-                  activeFilter === 'all'
-                    ? 'bg-neo-yellow text-black border-2 border-black shadow-brutal-sm'
-                    : 'text-black hover:bg-black/10'
-                }`}
-              >
-                Admin Audit
-              </button>
-            </div>
-          )}
 
           <button
             onClick={onRefresh}

@@ -5,9 +5,10 @@ import { db } from './_lib/db.js';
 import { images } from './_lib/schema.js';
 import { s3Client, BUCKET_NAME } from './_lib/s3.js';
 import { getAuthUserAsync } from './_lib/auth.js';
+import { getClientIp, checkRateLimit, applySecurityHeaders } from './_lib/security.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS & Security Headers
+  // CORS & Security Defensive Headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -15,17 +16,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  applySecurityHeaders(res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
+  // Rate Limiting Shield
+  const clientIp = getClientIp(req);
+  const rateLimit = checkRateLimit(clientIp, 'general');
+  if (!rateLimit.allowed) {
+    return res.status(429).json({
+      error: `Too many requests. Defense shield active. Please retry in ${rateLimit.retryAfterSeconds} seconds.`,
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    });
+  }
+
   const currentUser = await getAuthUserAsync(req);
 
-  // GET: Fetch images (strictly private: scoped only to authenticated owner)
+  // GET: Fetch images (strictly private: scoped only to authenticated owner, zero admin backdoors)
   if (req.method === 'GET') {
     try {
       if (!currentUser) {
@@ -33,28 +42,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json([]);
       }
 
-      const filter = req.query.filter as string;
-      const query = db.select().from(images);
-
-      let records;
-      // Admins can optionally view all images for content audit / moderation
-      if (currentUser.role === 'admin' && filter === 'all') {
-        records = await query
-          .orderBy(desc(images.createdAt))
-          .limit(50);
-      } else {
-        // Normal users strictly see ONLY their own uploaded files
-        records = await query
-          .where(eq(images.userId, currentUser.id))
-          .orderBy(desc(images.createdAt))
-          .limit(50);
-      }
+      // Every user (including admins) strictly sees ONLY their own uploaded files.
+      // Admin accounts cannot browse or inspect other members' photos to uphold strict user privacy.
+      const records = await db
+        .select()
+        .from(images)
+        .where(eq(images.userId, currentUser.id))
+        .orderBy(desc(images.createdAt))
+        .limit(100);
 
       const enriched = records.map((rec) => ({
         ...rec,
-        isOwner: currentUser
-          ? currentUser.role === 'admin' || rec.userId === currentUser.id
-          : false,
+        isOwner: true,
       }));
 
       return res.status(200).json(enriched);
@@ -168,12 +167,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const target = existing[0];
 
-      // Authorization: Admin can delete any image; users can only delete their own
-      const isAdmin = currentUser.role === 'admin';
+      // Privacy & Ownership: Only the true owner of the asset can delete it
       const isOwner = target.userId === currentUser.id;
 
-      if (!isAdmin && !isOwner) {
-        return res.status(403).json({ error: 'You do not have permission to delete this image.' });
+      if (!isOwner) {
+        return res.status(403).json({ error: 'You do not have permission to delete this image. Only the asset owner can delete it.' });
       }
 
       // 1. Delete from storage
