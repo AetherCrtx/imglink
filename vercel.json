@@ -7,7 +7,7 @@
       "destination": "/api/v/:key"
     },
     {
-      "source": "/rashqaandreanfitrahsulaemanganteng",
+      "source": "/((?!api/.*).*)",
       "destination": "/index.html"
     }
   ],
