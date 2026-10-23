@@ -1,0 +1,96 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import crypto from 'crypto';
+import { s3Client, BUCKET_NAME } from './_lib/s3';
+
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
+
+const MIME_EXTENSION_MAP: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
+
+const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed. Use POST.' });
+  }
+
+  try {
+    const { fileName, mimeType, sizeBytes } = req.body || {};
+
+    if (!fileName || typeof fileName !== 'string') {
+      return res.status(400).json({ error: 'Missing or invalid "fileName".' });
+    }
+
+    if (!mimeType || typeof mimeType !== 'string' || !ALLOWED_MIME_TYPES.has(mimeType)) {
+      return res.status(400).json({
+        error: `Invalid "mimeType". Allowed types: ${Array.from(ALLOWED_MIME_TYPES).join(', ')}`,
+      });
+    }
+
+    const parsedSize = Number(sizeBytes);
+    if (isNaN(parsedSize) || parsedSize <= 0 || parsedSize > MAX_SIZE_BYTES) {
+      return res.status(400).json({
+        error: `Invalid "sizeBytes". File size must be between 1 byte and 10MB (10485760 bytes).`,
+      });
+    }
+
+    if (!BUCKET_NAME) {
+      return res.status(500).json({
+        error: 'Server storage configuration error: B2_BUCKET_NAME is not set.',
+      });
+    }
+
+    // Determine extension safely
+    const originalExt = fileName.split('.').pop()?.toLowerCase() || '';
+    const safeExt =
+      originalExt && ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(originalExt)
+        ? originalExt
+        : MIME_EXTENSION_MAP[mimeType] || 'bin';
+
+    const uniqueId = crypto.randomUUID();
+    const fileKey = `${uniqueId}.${safeExt}`;
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileKey,
+      ContentType: mimeType,
+      ContentLength: parsedSize,
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
+
+    return res.status(200).json({
+      uploadUrl,
+      fileKey,
+      expiresIn: 300,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown server error';
+    console.error('[upload-url error]:', err);
+    return res.status(500).json({ error: 'Failed to generate upload URL', details: message });
+  }
+}
