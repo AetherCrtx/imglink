@@ -49,4 +49,4 @@ export const s3Client = new Proxy({} as S3Client, {
 });
 
 export const BUCKET_NAME = 'images';
-export const STORAGE_PROVIDER_NAME = 'Neon Object Storage';
+export const STORAGE_PROVIDER_NAME = 'Secure Cloud Storage';

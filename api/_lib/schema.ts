@@ -1,12 +1,15 @@
 import { pgTable, uuid, varchar, integer, timestamp } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: varchar('id', { length: 255 }).primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
-  passwordHash: varchar('password_hash', { length: 255 }),
-  name: varchar('name', { length: 100 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
   avatarUrl: varchar('avatar_url', { length: 500 }),
-  provider: varchar('provider', { length: 50 }).default('email'),
+  role: varchar('role', { length: 50 }).default('user').notNull(), // 'user' | 'admin'
+  tier: varchar('tier', { length: 50 }).default('free').notNull(), // 'free' | 'pro'
+  proRequestStatus: varchar('pro_request_status', { length: 50 }).default('none').notNull(), // 'none' | 'pending' | 'approved' | 'rejected'
+  proRequestedAt: timestamp('pro_requested_at', { mode: 'date' }),
+  proRequestNote: varchar('pro_request_note', { length: 500 }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
 

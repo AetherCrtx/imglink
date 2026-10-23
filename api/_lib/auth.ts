@@ -10,17 +10,40 @@ export const NEON_AUTH_BASE_URL =
   process.env.NEON_AUTH_BASE_URL ||
   'https://ep-divine-butterfly-azwhepvg.neonauth.c-3.ap-southeast-1.aws.neon.tech/neondb/auth';
 
+export const ADMIN_EMAIL = 'rashqaandrean@gmail.com';
+
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
   avatarUrl?: string | null;
+  role: 'user' | 'admin';
+  tier: 'free' | 'pro';
+  proRequestStatus: 'none' | 'pending' | 'approved' | 'rejected';
+  proRequestedAt?: string | null;
+  proRequestNote?: string | null;
+  imageCount?: number;
 }
 
 export function createToken(user: AuthUser, expiresInDays = 7): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const exp = Math.floor(Date.now() / 1000) + expiresInDays * 24 * 60 * 60;
-  const payload = Buffer.from(JSON.stringify({ ...user, exp })).toString('base64url');
+  const payload = Buffer.from(
+    JSON.stringify({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl || null,
+      role: user.role,
+      tier: user.tier,
+      proRequestStatus: user.proRequestStatus,
+      proRequestedAt: user.proRequestedAt || null,
+      proRequestNote: user.proRequestNote || null,
+      imageCount: user.imageCount || 0,
+      exp,
+    })
+  ).toString('base64url');
+
   const signature = crypto
     .createHmac('sha256', JWT_SECRET)
     .update(`${header}.${payload}`)
@@ -47,15 +70,68 @@ export function verifyLocalToken(token: string): AuthUser | null {
       return null;
     }
 
+    const email = String(decoded.email || '').toLowerCase().trim();
+    const isAdmin = email === ADMIN_EMAIL;
+
     return {
-      id: decoded.id,
-      email: decoded.email,
-      name: decoded.name,
+      id: String(decoded.id),
+      email,
+      name: decoded.name || email.split('@')[0] || 'User',
       avatarUrl: decoded.avatarUrl || null,
+      role: isAdmin ? 'admin' : (decoded.role === 'admin' ? 'admin' : 'user'),
+      tier: isAdmin ? 'pro' : (decoded.tier === 'pro' ? 'pro' : 'free'),
+      proRequestStatus: decoded.proRequestStatus || 'none',
+      proRequestedAt: decoded.proRequestedAt || null,
+      proRequestNote: decoded.proRequestNote || null,
+      imageCount: typeof decoded.imageCount === 'number' ? decoded.imageCount : 0,
     };
   } catch {
     return null;
   }
+}
+
+export async function syncAndGetPublicUser(
+  sql: any,
+  baseUser: { id: string; email: string; name: string; avatarUrl?: string | null }
+): Promise<AuthUser> {
+  const emailLower = baseUser.email.toLowerCase().trim();
+  const isAdmin = emailLower === ADMIN_EMAIL;
+  const defaultRole = isAdmin ? 'admin' : 'user';
+  const defaultTier = isAdmin ? 'pro' : 'free';
+
+  // 1. Upsert into public.users
+  const userRows = await sql`
+    INSERT INTO public.users (id, email, name, avatar_url, role, tier, created_at)
+    VALUES (${baseUser.id}, ${emailLower}, ${baseUser.name}, ${baseUser.avatarUrl || null}, ${defaultRole}, ${defaultTier}, NOW())
+    ON CONFLICT (email) DO UPDATE
+    SET name = EXCLUDED.name,
+        avatar_url = COALESCE(EXCLUDED.avatar_url, public.users.avatar_url),
+        role = CASE WHEN EXCLUDED.email = ${ADMIN_EMAIL} THEN 'admin' ELSE public.users.role END,
+        tier = CASE WHEN EXCLUDED.email = ${ADMIN_EMAIL} THEN 'pro' ELSE public.users.tier END
+    RETURNING id, email, name, avatar_url, role, tier, pro_request_status, pro_requested_at, pro_request_note
+  `;
+
+  const user = userRows[0];
+  const userId = String(user.id);
+
+  // 2. Count images
+  const countRows = await sql`
+    SELECT count(*)::int as count FROM public.images WHERE user_id = ${userId}
+  `;
+  const imageCount = countRows[0]?.count ?? 0;
+
+  return {
+    id: userId,
+    email: user.email,
+    name: user.name,
+    avatarUrl: user.avatar_url || null,
+    role: (isAdmin ? 'admin' : (user.role || 'user')) as 'user' | 'admin',
+    tier: (isAdmin ? 'pro' : (user.tier || 'free')) as 'free' | 'pro',
+    proRequestStatus: (user.pro_request_status || 'none') as 'none' | 'pending' | 'approved' | 'rejected',
+    proRequestedAt: user.pro_requested_at ? new Date(user.pro_requested_at).toISOString() : null,
+    proRequestNote: user.pro_request_note || null,
+    imageCount,
+  };
 }
 
 /**
@@ -94,13 +170,15 @@ export async function getAuthUserAsync(req: {
 
   const cleanToken = token.includes('.') ? token.split('.')[0] : token;
 
-  // 1. Try resolving against Neon Auth session table in database
   const dbUrl =
     process.env.DATABASE_URL ||
     'postgresql://neondb_owner:npg_Gjp2AgVy8ieL@ep-divine-butterfly-azwhepvg-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+
   if (dbUrl) {
     try {
       const sql = neon(dbUrl);
+
+      // 1. Try resolving against Neon Auth session table in database
       const rows = await sql`
         SELECT u.id, u.name, u.email, u.image
         FROM neon_auth.session s
@@ -109,19 +187,25 @@ export async function getAuthUserAsync(req: {
         LIMIT 1
       `;
       if (rows && rows.length > 0) {
-        return {
+        return await syncAndGetPublicUser(sql, {
           id: String(rows[0].id),
           name: rows[0].name || rows[0].email?.split('@')[0] || 'User',
           email: rows[0].email,
           avatarUrl: rows[0].image || null,
-        };
+        });
+      }
+
+      // 2. If token is local JWT, verify and sync latest state from DB
+      const localUser = verifyLocalToken(token);
+      if (localUser) {
+        return await syncAndGetPublicUser(sql, localUser);
       }
     } catch (dbErr) {
       console.error('[auth db session lookup error]:', dbErr);
     }
   }
 
-  // 2. Try verifying as local JWT
+  // 3. Fallback to purely local token verification
   return verifyLocalToken(token);
 }
 

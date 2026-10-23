@@ -7,14 +7,17 @@ import { s3Client, BUCKET_NAME } from './_lib/s3.js';
 import { getAuthUserAsync } from './_lib/auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS Headers
+  // CORS & Security Headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -33,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         records = await query
           .where(eq(images.userId, currentUser.id))
           .orderBy(desc(images.createdAt))
-          .limit(30);
+          .limit(50);
       } else {
         records = await query
           .orderBy(desc(images.createdAt))
@@ -42,7 +45,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const enriched = records.map((rec) => ({
         ...rec,
-        isOwner: currentUser ? rec.userId === currentUser.id : false,
+        isOwner: currentUser
+          ? currentUser.role === 'admin' || rec.userId === currentUser.id
+          : false,
       }));
 
       return res.status(200).json(enriched);
@@ -56,6 +61,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // POST: Save uploaded image metadata
   if (req.method === 'POST') {
     try {
+      if (!currentUser) {
+        return res.status(401).json({
+          error: 'Authentication required. Please sign in with Google to upload images.',
+        });
+      }
+
+      // Enforce Free tier 3-image limit
+      if (currentUser.tier === 'free' && (currentUser.imageCount ?? 0) >= 3) {
+        return res.status(403).json({
+          error: 'Free tier limit reached (maximum 3 images). Please upgrade to Pro for unlimited uploads.',
+          limitReached: true,
+          tier: 'free',
+          count: currentUser.imageCount,
+          max: 3,
+        });
+      }
+
       let body = req.body;
       if (typeof body === 'string') {
         try {
@@ -91,7 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           originalName: originalName.trim(),
           mimeType: mimeType.trim(),
           sizeBytes: parsedSize,
-          userId: currentUser ? currentUser.id : null,
+          userId: currentUser.id,
         })
         .returning();
 
@@ -106,9 +128,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // DELETE: Delete from storage and Neon DB
+  // DELETE: Delete from storage and database
   if (req.method === 'DELETE') {
     try {
+      if (!currentUser) {
+        return res.status(401).json({ error: 'Authentication required to delete images.' });
+      }
+
       const id = (req.query.id as string) || (req.body?.id as string);
       const fileKey = (req.query.fileKey as string) || (req.body?.fileKey as string);
 
@@ -134,12 +160,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const target = existing[0];
 
-      // Ownership authorization
-      if (target.userId && currentUser && target.userId !== currentUser.id) {
+      // Authorization: Admin can delete any image; users can only delete their own
+      const isAdmin = currentUser.role === 'admin';
+      const isOwner = target.userId === currentUser.id;
+
+      if (!isAdmin && !isOwner) {
         return res.status(403).json({ error: 'You do not have permission to delete this image.' });
       }
 
-      // 1. Delete from S3 storage
+      // 1. Delete from storage
       if (BUCKET_NAME && target.fileKey) {
         try {
           const deleteCommand = new DeleteObjectCommand({
@@ -148,16 +177,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
           await s3Client.send(deleteCommand);
         } catch (s3Err) {
-          console.warn('[images DELETE S3 warning]:', s3Err);
+          console.warn('[images DELETE storage warning]:', s3Err);
         }
       }
 
-      // 2. Delete from Neon DB
+      // 2. Delete from database
       await db.delete(images).where(eq(images.id, target.id));
 
       return res.status(200).json({
         success: true,
-        message: 'Image deleted successfully from storage and database.',
+        message: 'Image deleted successfully.',
         deletedId: target.id,
         deletedFileKey: target.fileKey,
       });

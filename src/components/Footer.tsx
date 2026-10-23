@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Shield, Sparkles } from 'lucide-react';
+import { Layers, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
@@ -21,25 +21,26 @@ export const Footer: React.FC = () => {
               IMGLINK
             </span>
             <span className="font-mono text-xs font-black text-black">
-              DIRECT CLOUD IMAGE-TO-URL PLATFORM
+              DIRECT HIGH-SPEED IMAGE HOSTING & SHARING
             </span>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2.5 font-mono font-black text-xs">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-cyan border-2 border-black text-black shadow-brutal-sm hover:-translate-y-0.5 transition-transform">
-              <Layers className="w-3.5 h-3.5 text-black" />
-              REACT + VITE
+              <Zap className="w-3.5 h-3.5 fill-black stroke-black" />
+              FAST DIRECT UPLOADS
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-lime border-2 border-black text-black shadow-brutal-sm hover:-translate-y-0.5 transition-transform">
-              <Shield className="w-3.5 h-3.5 text-black" />
-              NEON STORAGE
+              <Layers className="w-3.5 h-3.5 stroke-[2.5]" />
+              INSTANT EMBED LINKS
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-purple border-2 border-black text-white shadow-brutal-sm hover:-translate-y-0.5 transition-transform">
-              <Sparkles className="w-3.5 h-3.5 fill-white text-black" />
-              NEON POSTGRESQL
+              <ShieldCheck className="w-3.5 h-3.5 stroke-[2.5]" />
+              GOOGLE VERIFIED
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-pink border-2 border-black text-black shadow-brutal-sm hover:-translate-y-0.5 transition-transform">
-              GOOGLE AUTH
+              <Sparkles className="w-3.5 h-3.5 fill-black stroke-black" />
+              UNLIMITED PRO TIER
             </span>
           </div>
         </div>

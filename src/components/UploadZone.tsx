@@ -11,13 +11,16 @@ import {
   Sparkles,
   Lock,
   ArrowRight,
+  Crown,
+  Zap,
 } from 'lucide-react';
 import type { ImageRecord, UploadProgress, AuthUser } from '../types';
 import { formatBytes } from '../utils/formatters';
 
 interface UploadZoneProps {
   user: AuthUser | null;
-  onOpenAuth: (mode?: 'login' | 'register') => void;
+  onOpenAuth: () => void;
+  onOpenProModal: () => void;
   onUploadSuccess: (image: ImageRecord) => void;
   isUploading: boolean;
   setIsUploading: (uploading: boolean) => void;
@@ -29,6 +32,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 export const UploadZone: React.FC<UploadZoneProps> = ({
   user,
   onOpenAuth,
+  onOpenProModal,
   onUploadSuccess,
   isUploading,
   setIsUploading,
@@ -38,6 +42,9 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isFreeTier = user?.tier === 'free';
+  const hasReachedFreeLimit = isFreeTier && (user?.imageCount ?? 0) >= 3;
 
   const validateFile = (file: File): string | null => {
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
@@ -54,7 +61,12 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       setValidationError(null);
 
       if (!user) {
-        onOpenAuth('login');
+        onOpenAuth();
+        return;
+      }
+
+      if (hasReachedFreeLimit) {
+        onOpenProModal();
         return;
       }
 
@@ -71,7 +83,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         percent: 10,
         loadedBytes: 0,
         totalBytes: file.size,
-        statusText: '1/3 GETTING PRESIGNED STORAGE URL...',
+        statusText: '1/3 GETTING DIRECT UPLOAD LINK...',
       });
 
       try {
@@ -87,13 +99,13 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
 
         const { uploadUrl, fileKey } = urlResponse.data;
 
-        // Step 2: Upload directly to Cloud Storage using PUT
+        // Step 2: Upload directly to Storage using PUT
         setProgress({
           stage: 'uploading',
           percent: 20,
           loadedBytes: 0,
           totalBytes: file.size,
-          statusText: '2/3 STREAMING DIRECTLY TO OBJECT STORAGE...',
+          statusText: '2/3 STREAMING IMAGE FILE...',
         });
 
         await axios.put(uploadUrl, file, {
@@ -102,7 +114,6 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           },
           transformRequest: [
             (data, headers) => {
-              // Direct S3/Bucket presigned URLs reject requests containing custom Authorization headers
               if (headers) {
                 delete headers.Authorization;
                 delete headers.authorization;
@@ -131,13 +142,13 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           },
         });
 
-        // Step 3: Save metadata to Neon PostgreSQL
+        // Step 3: Save metadata to Database
         setProgress({
           stage: 'saving-metadata',
           percent: 92,
           loadedBytes: file.size,
           totalBytes: file.size,
-          statusText: '3/3 SAVING METADATA TO NEON DB...',
+          statusText: '3/3 FINALIZING RECORD...',
         });
 
         const metadataResponse = await axios.post<ImageRecord>('/api/images', {
@@ -166,14 +177,21 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         if (axios.isAxiosError(err)) {
           if (err.response?.status === 401) {
             detailMessage = 'SESSION EXPIRED OR UNAUTHORIZED. PLEASE SIGN IN.';
-            onOpenAuth('login');
+            onOpenAuth();
+          } else if (err.response?.status === 403 && err.response?.data?.limitReached) {
+            detailMessage = 'FREE TIER LIMIT REACHED (MAX 3 IMAGES). UPGRADE TO PRO!';
+            onOpenProModal();
           } else if (err.response?.data) {
             const data = err.response.data;
             if (typeof data === 'string') {
               detailMessage = data;
             } else if (typeof data.error === 'string') {
               detailMessage = data.error;
-            } else if (data.error && typeof data.error === 'object' && typeof data.error.message === 'string') {
+            } else if (
+              data.error &&
+              typeof data.error === 'object' &&
+              typeof data.error.message === 'string'
+            ) {
               detailMessage = data.error.message;
             } else if (typeof data.message === 'string') {
               detailMessage = data.message;
@@ -183,7 +201,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
               detailMessage = err.message || 'UPLOAD FAILED';
             }
           } else if (err.message && err.message.includes('Network Error')) {
-            detailMessage = 'NETWORK ERROR CONNECTING TO STORAGE BUCKET.';
+            detailMessage = 'NETWORK ERROR CONNECTING TO STORAGE.';
           } else if (err.message) {
             detailMessage = err.message;
           }
@@ -199,43 +217,40 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           statusText: 'UPLOAD FAILED',
           error: detailMessage,
         });
-        setValidationError(detailMessage);
       }
     },
-    [user, onOpenAuth, onUploadSuccess, setIsUploading]
+    [user, hasReachedFreeLimit, setIsUploading, onOpenAuth, onOpenProModal, onUploadSuccess]
   );
 
-  // Global Clipboard Paste Listener (Ctrl+V / Cmd+V)
+  // Global Clipboard Paste (Ctrl+V / Cmd+V)
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
-      if (isUploading) return;
-      const items = e.clipboardData?.items;
-      if (!items) return;
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')
+      ) {
+        return;
+      }
 
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file) {
-            const ext = item.type.split('/')[1] || 'png';
-            const namedFile = new File(
-              [file],
-              `clipboard-${Date.now()}.${ext}`,
-              { type: item.type }
-            );
-            processUpload(namedFile);
-            break;
+      if (e.clipboardData && e.clipboardData.items) {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.startsWith('image/')) {
+            const file = items[i].getAsFile();
+            if (file) {
+              e.preventDefault();
+              processUpload(file);
+              return;
+            }
           }
         }
       }
     };
 
     window.addEventListener('paste', handlePaste);
-    return () => {
-      window.removeEventListener('paste', handlePaste);
-    };
-  }, [isUploading, processUpload]);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [processUpload]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -276,10 +291,10 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
         accept="image/jpeg,image/png,image/webp,image/gif"
         className="hidden"
         onChange={handleFileSelect}
-        disabled={isUploading || !user}
+        disabled={isUploading || !user || hasReachedFreeLimit}
       />
 
-      {/* Validation / Error Banner (Neo-Brutalist) */}
+      {/* Validation / Error Banner */}
       {validationError && (
         <div className="flex items-start gap-3 p-4 bg-neo-pink/20 border-[3px] border-black shadow-brutal text-black animate-fadeIn">
           <div className="p-1 bg-neo-pink border-2 border-black flex-shrink-0">
@@ -313,28 +328,52 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
               Sign In To Upload Images
             </h3>
             <p className="font-mono text-xs text-black/80 font-bold leading-relaxed">
-              Create a free account or login with Google to generate permanent shareable URLs, direct S3 cloud storage, and view your complete archive.
+              Sign in with your Google account to get instant high-speed image uploads, shareable short URLs, embed codes, and your private gallery.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+          <div className="flex justify-center w-full">
             <button
-              onClick={() => onOpenAuth('login')}
-              className="w-full sm:w-auto min-h-[48px] px-6 py-3.5 bg-neo-yellow hover:bg-neo-lime active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-2"
+              onClick={onOpenAuth}
+              className="w-full sm:w-auto min-h-[48px] px-8 py-3.5 bg-neo-yellow hover:bg-neo-lime active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-2.5"
             >
-              <span>Sign In Now</span>
+              <span>Continue with Google</span>
               <ArrowRight className="w-4 h-4 stroke-[3]" />
             </button>
+          </div>
+        </div>
+      ) : hasReachedFreeLimit ? (
+        /* Free Limit Reached Card */
+        <div className="p-6 sm:p-8 md:p-10 bg-neo-yellow border-[4px] border-black shadow-brutal-xl text-center space-y-5 relative overflow-hidden">
+          <div className="inline-block p-3 sm:p-4 bg-neo-lime border-[3px] border-black shadow-brutal -rotate-2">
+            <Crown className="w-8 h-8 sm:w-10 sm:h-10 text-black stroke-[3]" />
+          </div>
+
+          <div className="space-y-2 max-w-lg mx-auto">
+            <div className="inline-block px-3 py-1 bg-neo-pink border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm rotate-1">
+              ★ FREE QUOTA FULL (3 / 3 IMAGES)
+            </div>
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight text-black">
+              Free Limit Reached!
+            </h3>
+            <p className="font-mono text-xs text-black/80 font-bold leading-relaxed">
+              Free tier accounts can host up to 3 images. You currently have 3 images stored.
+              Submit a quick upgrade request to unlock <span className="font-black">UNLIMITED PRO UPLOADS</span>!
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
-              onClick={() => onOpenAuth('register')}
-              className="w-full sm:w-auto min-h-[48px] px-6 py-3.5 bg-neo-cyan hover:bg-neo-pink active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center"
+              onClick={onOpenProModal}
+              className="w-full sm:w-auto min-h-[48px] px-8 py-3 bg-neo-lime hover:bg-white active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-2"
             >
-              Register Free
+              <Crown className="w-4 h-4 stroke-[3]" />
+              <span>Upgrade to Pro (Free)</span>
             </button>
           </div>
         </div>
       ) : (
-        /* Neo-Brutalist Active Dropzone */
+        /* Active Neo-Brutalist Dropzone */
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -354,11 +393,15 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
               <span className="w-3 h-3 bg-neo-red border-2 border-black rounded-full inline-block" />
               <span className="w-3 h-3 bg-neo-yellow border-2 border-black rounded-full inline-block" />
               <span className="w-3 h-3 bg-neo-lime border-2 border-black rounded-full inline-block" />
-              <span className="ml-1 sm:ml-2 tracking-wider hidden xs:inline">IMGLINK // STORAGE_CLIENT</span>
-              <span className="ml-1 tracking-wider xs:hidden">IMGLINK</span>
+              <span className="ml-1 sm:ml-2 tracking-wider hidden xs:inline">
+                IMGLINK // {user.tier === 'pro' ? 'PRO TIER' : `FREE TIER (${user.imageCount ?? 0}/3 USED)`}
+              </span>
+              <span className="ml-1 tracking-wider xs:hidden">
+                {user.tier === 'pro' ? 'PRO' : `${user.imageCount ?? 0}/3 USED`}
+              </span>
             </div>
             <span className="px-2 py-0.5 bg-black text-white text-[10px] tracking-widest font-black">
-              {isUploading ? 'UPLOADING' : 'ONLINE'}
+              {isUploading ? 'UPLOADING' : 'READY'}
             </span>
           </div>
 
@@ -445,7 +488,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 bg-neo-cyan border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
                   <Sparkles className="w-3.5 h-3.5" />
-                  DIRECT S3 PRESIGNED
+                  INSTANT DIRECT CLOUD
                 </span>
               </div>
             </div>

@@ -29,13 +29,15 @@ A modern, high-performance, neo-brutalist full-stack web application to upload i
 
 ---
 
-## Tech Stack
+## Tech Stack & Architecture
 
 - **Frontend:** React 18, TypeScript, Tailwind CSS (Neo-Brutalism), Lucide React, Axios.
 - **Backend:** Node.js Vercel Serverless Functions (`/api` directory) + Built-in Vite Dev API plugin.
-- **Database:** Neon Serverless PostgreSQL with Drizzle ORM (`drizzle-kit`).
-- **Object Storage:** Neon Object Storage (S3-compatible) via AWS SDK v3.
-- **Authentication:** Neon Auth (Managed Better Auth) with Google OAuth & Email/Password.
+- **Database:** Serverless PostgreSQL with Drizzle ORM (`drizzle-kit`).
+- **Object Storage:** Private Object Storage (S3-compatible) via AWS SDK v3.
+- **Authentication:** Google OAuth 2.0 (Strictly Google-Only for high security).
+- **Member Tiers:** Free Tier (max 3 images) & Pro Tier (unlimited images with Admin approval workflow).
+- **Admin Console:** Dedicated administrative panel for user tier control and request triage.
 - **Production Domain:** `https://imglink.web.id`
 
 ---

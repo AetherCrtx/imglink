@@ -1,8 +1,32 @@
+export type UserRole = 'user' | 'admin';
+export type UserTier = 'free' | 'pro';
+export type ProRequestStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
   avatarUrl?: string | null;
+  role: UserRole;
+  tier: UserTier;
+  proRequestStatus: ProRequestStatus;
+  proRequestedAt?: string | null;
+  proRequestNote?: string | null;
+  imageCount?: number;
+}
+
+export interface AdminMemberRecord {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl?: string | null;
+  role: UserRole;
+  tier: UserTier;
+  proRequestStatus: ProRequestStatus;
+  proRequestedAt?: string | null;
+  proRequestNote?: string | null;
+  imageCount: number;
+  createdAt: string;
 }
 
 export interface ImageRecord {

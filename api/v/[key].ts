@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!BUCKET_NAME) {
       return res.status(500).json({
-        error: 'Server storage configuration error: B2_BUCKET_NAME is not set.',
+        error: 'Server storage configuration error: Storage bucket is not set.',
       });
     }
 

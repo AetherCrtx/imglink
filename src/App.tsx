@@ -6,6 +6,8 @@ import { UploadZone } from './components/UploadZone';
 import { ResultCard } from './components/ResultCard';
 import { RecentUploads } from './components/RecentUploads';
 import { AuthModal } from './components/AuthModal';
+import { AdminPanel } from './components/AdminPanel';
+import { ProUpgradeModal } from './components/ProUpgradeModal';
 import type { ImageRecord, AuthUser } from './types';
 import { initializeAuth, clearAuthSession, setAuthSession } from './utils/auth';
 import { Sparkles, ArrowDown, ShieldCheck, Zap } from 'lucide-react';
@@ -13,7 +15,8 @@ import { Sparkles, ArrowDown, ShieldCheck, Zap } from 'lucide-react';
 export const App: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState<boolean>(false);
+  const [isProModalOpen, setIsProModalOpen] = useState<boolean>(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'mine'>('all');
 
   const [images, setImages] = useState<ImageRecord[]>([]);
@@ -22,22 +25,88 @@ export const App: React.FC = () => {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [actionNotice, setActionNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Initialize Auth on page load
+  // Initialize Auth & Handle OAuth Redirects
   useEffect(() => {
     const existing = initializeAuth();
     if (existing) {
       setUser(existing);
     }
 
-    // Check with backend (validates Neon Auth Google session and JWT)
+    const searchParams = new URLSearchParams(window.location.search);
+    const verifier =
+      searchParams.get('neon_auth_session_verifier') || searchParams.get('verifier');
+    const tokenParam = searchParams.get('token');
+
+    // 1. If returning from OAuth with session verifier
+    if (verifier) {
+      axios
+        .post<{ user: AuthUser; token: string }>('/api/auth', {
+          action: 'exchange',
+          verifier,
+        })
+        .then((res) => {
+          if (res.data.user && res.data.token) {
+            setAuthSession(res.data.token, res.data.user);
+            setUser(res.data.user);
+            setActionNotice({
+              message: `WELCOME, ${res.data.user.name.toUpperCase()}!`,
+              type: 'success',
+            });
+            setTimeout(() => setActionNotice(null), 3500);
+          }
+        })
+        .catch((err) => {
+          console.error('Verifier exchange error:', err);
+        })
+        .finally(() => {
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete('neon_auth_session_verifier');
+          cleanUrl.searchParams.delete('verifier');
+          cleanUrl.searchParams.delete('login');
+          window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
+        });
+      return;
+    }
+
+    // 2. If returning from OAuth redirect with token
+    if (tokenParam) {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('token');
+      cleanUrl.searchParams.delete('login');
+      window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
+
+      axios.defaults.headers.common['Authorization'] = `Bearer ${tokenParam}`;
+      axios
+        .get<{ user: AuthUser | null; token?: string }>('/api/auth')
+        .then((res) => {
+          if (res.data.user) {
+            setAuthSession(tokenParam, res.data.user);
+            setUser(res.data.user);
+            setActionNotice({
+              message: `WELCOME, ${res.data.user.name.toUpperCase()}!`,
+              type: 'success',
+            });
+            setTimeout(() => setActionNotice(null), 3500);
+          }
+        })
+        .catch((err) => {
+          console.error('Token validation error:', err);
+        });
+      return;
+    }
+
+    // 3. Normal initial session verification
     axios
-      .get<{ user: AuthUser; token?: string }>('/api/auth')
+      .get<{ user: AuthUser | null; token?: string }>('/api/auth')
       .then((res) => {
         if (res.data.user) {
           setUser(res.data.user);
           if (res.data.token) {
             setAuthSession(res.data.token, res.data.user);
           }
+        } else if (!existing) {
+          clearAuthSession();
+          setUser(null);
         }
       })
       .catch(() => {
@@ -68,8 +137,7 @@ export const App: React.FC = () => {
     fetchRecentImages();
   }, [fetchRecentImages]);
 
-  const handleOpenAuth = (mode: 'login' | 'register' = 'login') => {
-    setAuthModalMode(mode);
+  const handleOpenAuth = () => {
     setIsAuthModalOpen(true);
   };
 
@@ -87,6 +155,7 @@ export const App: React.FC = () => {
     clearAuthSession();
     setUser(null);
     setActiveFilter('all');
+    axios.post('/api/auth', { action: 'logout' }).catch(() => {});
     setActionNotice({
       message: 'LOGGED OUT SUCCESSFULLY.',
       type: 'success',
@@ -98,6 +167,8 @@ export const App: React.FC = () => {
   const handleUploadSuccess = (newImage: ImageRecord) => {
     setActiveResult(newImage);
     setImages((prev) => [newImage, ...prev.filter((img) => img.id !== newImage.id)]);
+    setUser((prev) => (prev ? { ...prev, imageCount: (prev.imageCount ?? 0) + 1 } : null));
+
     setActionNotice({
       message: `UPLOAD COMPLETE: "${newImage.originalName.toUpperCase()}"`,
       type: 'success',
@@ -115,9 +186,12 @@ export const App: React.FC = () => {
       if (activeResult?.id === id) {
         setActiveResult(null);
       }
+      setUser((prev) =>
+        prev ? { ...prev, imageCount: Math.max(0, (prev.imageCount ?? 1) - 1) } : null
+      );
 
       setActionNotice({
-        message: 'IMAGE DELETED FROM STORAGE & DATABASE.',
+        message: 'IMAGE DELETED SUCCESSFULLY.',
         type: 'success',
       });
       setTimeout(() => setActionNotice(null), 3500);
@@ -147,6 +221,8 @@ export const App: React.FC = () => {
         user={user}
         onOpenAuth={handleOpenAuth}
         onLogout={handleLogout}
+        onOpenAdmin={() => setIsAdminPanelOpen(true)}
+        onOpenProModal={() => setIsProModalOpen(true)}
       />
 
       {/* Neo-brutalist Infinite Ticker Tape */}
@@ -155,15 +231,15 @@ export const App: React.FC = () => {
           {[1, 2].map((k) => (
             <div key={k} className="flex items-center space-x-6">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-pink text-black border-2 border-black shadow-brutal-sm rotate-1">
-                ⚡ 100% PRIVATE NEON STORAGE
+                ⚡ 100% PRIVATE & SECURE HOSTING
               </span>
               <span>✦</span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-cyan text-black border-2 border-black shadow-brutal-sm -rotate-1">
-                ★ GOOGLE OAUTH READY
+                ★ GOOGLE VERIFIED IDENTITY
               </span>
               <span>✦</span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-lime text-black border-2 border-black shadow-brutal-sm rotate-2">
-                ⚡ DIRECT PRESIGNED S3 UPLOAD
+                ⚡ DIRECT HIGH-SPEED STREAMING
               </span>
               <span>✦</span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-purple text-white border-2 border-black shadow-brutal-sm -rotate-1">
@@ -176,6 +252,10 @@ export const App: React.FC = () => {
               <span>✦</span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white text-black border-2 border-black shadow-brutal-sm -rotate-2">
                 ★ CLIPBOARD PASTE CTRL+V
+              </span>
+              <span>✦</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-lime text-black border-2 border-black shadow-brutal-sm rotate-1">
+                ★ UNLIMITED PRO TIER
               </span>
               <span>✦</span>
             </div>
@@ -201,7 +281,7 @@ export const App: React.FC = () => {
         <section className="text-center space-y-4 sm:space-y-5 pt-1 sm:pt-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-1.5 bg-neo-cyan border-[3px] border-black font-mono font-black text-[10px] sm:text-xs uppercase text-black shadow-brutal-sm sm:shadow-brutal -rotate-1 hover:rotate-1 transition-transform">
             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-black" />
-            <span>DIRECT NEON S3 PRESIGNED // ZERO BOTTLENECK</span>
+            <span>FAST DIRECT CLOUD HOSTING // ZERO BOTTLENECK</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight text-black leading-tight sm:leading-none max-w-4xl mx-auto px-1">
@@ -215,7 +295,7 @@ export const App: React.FC = () => {
           </h1>
 
           <p className="font-mono text-xs sm:text-sm font-bold text-black/80 max-w-xl mx-auto leading-relaxed px-2">
-            Ultra-fast direct-to-cloud upload to Neon Object Storage private bucket. Instant short URLs, Markdown/HTML embed snippets, and serverless database indexing.
+            Ultra-fast direct image hosting. Instant short URLs, Markdown and HTML embed snippets, clipboard paste support, and your private image gallery.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-1 sm:pt-2">
@@ -225,11 +305,11 @@ export const App: React.FC = () => {
             </span>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 bg-neo-cyan border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm rotate-1 hover:scale-105 transition-transform">
               <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5]" />
-              PRIVATE OBJECT STORAGE
+              SECURE PRIVATE HOSTING
             </span>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 bg-neo-purple border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-white shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
               <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-white" />
-              NEON POSTGRESQL DB
+              INSTANT EMBED CODES
             </span>
           </div>
         </section>
@@ -245,6 +325,7 @@ export const App: React.FC = () => {
             <UploadZone
               user={user}
               onOpenAuth={handleOpenAuth}
+              onOpenProModal={() => setIsProModalOpen(true)}
               onUploadSuccess={handleUploadSuccess}
               isUploading={isUploading}
               setIsUploading={setIsUploading}
@@ -282,7 +363,29 @@ export const App: React.FC = () => {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onAuthSuccess={handleAuthSuccess}
-        initialMode={authModalMode}
+      />
+
+      {/* Admin Panel Modal */}
+      {user?.role === 'admin' && (
+        <AdminPanel
+          isOpen={isAdminPanelOpen}
+          onClose={() => {
+            setIsAdminPanelOpen(false);
+            fetchRecentImages();
+          }}
+          currentUserEmail={user.email}
+        />
+      )}
+
+      {/* Pro Upgrade Modal */}
+      <ProUpgradeModal
+        isOpen={isProModalOpen}
+        onClose={() => setIsProModalOpen(false)}
+        user={user}
+        onUserUpdated={(updatedUser) => {
+          setUser(updatedUser);
+        }}
+        onOpenAuth={handleOpenAuth}
       />
     </div>
   );
