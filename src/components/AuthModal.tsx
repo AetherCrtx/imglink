@@ -93,10 +93,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       <div className="relative w-full max-w-md bg-white border-[4px] border-black shadow-brutal-xl overflow-hidden">
         {/* Retro Window Header */}
         <div className="bg-neo-yellow border-b-[3px] border-black px-4 py-2.5 flex items-center justify-between select-none">
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-black" />
-            <span className="font-mono font-black text-xs uppercase tracking-widest text-black">
-              NEON_AUTH // {mode === 'login' ? 'SIGN_IN' : 'CREATE_ACCOUNT'}
+          <div className="flex items-center gap-2.5">
+            <span className="w-3.5 h-3.5 bg-neo-red border-2 border-black rounded-full inline-block" />
+            <span className="w-3.5 h-3.5 bg-neo-yellow border-2 border-black rounded-full inline-block" />
+            <span className="w-3.5 h-3.5 bg-neo-lime border-2 border-black rounded-full inline-block" />
+            <span className="font-mono font-black text-xs uppercase tracking-wider text-black ml-1.5 flex items-center gap-1.5">
+              <Shield className="w-4 h-4 text-black stroke-[2.5]" />
+              <span>NEON_AUTH // {mode === 'login' ? 'SIGN_IN' : 'CREATE_ACCOUNT'}</span>
             </span>
           </div>
 
@@ -161,8 +164,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               }}
               className={`py-2 text-xs font-black uppercase tracking-wider transition-all ${
                 mode === 'login'
-                  ? 'bg-black text-white'
-                  : 'bg-transparent text-black hover:bg-black/10'
+                  ? 'bg-neo-yellow text-black border-2 border-black shadow-brutal-sm'
+                  : 'bg-transparent text-black hover:bg-black/10 border-2 border-transparent'
               }`}
             >
               Sign In
@@ -175,8 +178,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               }}
               className={`py-2 text-xs font-black uppercase tracking-wider transition-all ${
                 mode === 'register'
-                  ? 'bg-black text-white'
-                  : 'bg-transparent text-black hover:bg-black/10'
+                  ? 'bg-neo-cyan text-black border-2 border-black shadow-brutal-sm'
+                  : 'bg-transparent text-black hover:bg-black/10 border-2 border-transparent'
               }`}
             >
               Register
@@ -251,7 +254,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="submit"
               disabled={isLoading || isGoogleLoading}
-              className="w-full mt-2 py-3.5 bg-neo-yellow hover:bg-[#ffed4a] active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full mt-2 py-3.5 bg-neo-lime hover:bg-neo-yellow active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isLoading ? (
                 <>

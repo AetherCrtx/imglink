@@ -142,13 +142,47 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
       />
 
+      {/* Neo-brutalist Infinite Ticker Tape */}
+      <div className="bg-neo-yellow border-b-[3px] border-black overflow-hidden py-2 select-none">
+        <div className="flex w-max animate-marquee space-x-6 text-xs font-mono font-black uppercase tracking-wider text-black">
+          {[1, 2].map((k) => (
+            <div key={k} className="flex items-center space-x-6">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-pink text-black border-2 border-black shadow-brutal-sm rotate-1">
+                ⚡ 100% PRIVATE NEON STORAGE
+              </span>
+              <span>✦</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-cyan text-black border-2 border-black shadow-brutal-sm -rotate-1">
+                ★ GOOGLE OAUTH READY
+              </span>
+              <span>✦</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-lime text-black border-2 border-black shadow-brutal-sm rotate-2">
+                ⚡ DIRECT PRESIGNED S3 UPLOAD
+              </span>
+              <span>✦</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-purple text-white border-2 border-black shadow-brutal-sm -rotate-1">
+                ★ 10MB ULTRA-FAST PIPELINE
+              </span>
+              <span>✦</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-orange text-black border-2 border-black shadow-brutal-sm rotate-1">
+                ⚡ INSTANT SHORT & EMBED URLS
+              </span>
+              <span>✦</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white text-black border-2 border-black shadow-brutal-sm -rotate-2">
+                ★ CLIPBOARD PASTE CTRL+V
+              </span>
+              <span>✦</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 space-y-12">
         {/* Floating Neo-Brutalist Toast */}
         {actionNotice && (
           <div
             className={`fixed bottom-6 right-6 z-50 px-5 py-3.5 border-[3px] border-black font-mono font-black text-xs uppercase shadow-brutal-lg animate-fadeIn flex items-center gap-2.5 ${
               actionNotice.type === 'success'
-                ? 'bg-neo-green text-black'
+                ? 'bg-neo-lime text-black'
                 : 'bg-neo-pink text-black'
             }`}
           >
@@ -158,32 +192,37 @@ export const App: React.FC = () => {
 
         {/* Hero Section (Neo-Brutalism) */}
         <section className="text-center space-y-5 pt-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-neo-yellow border-[3px] border-black font-mono font-black text-xs uppercase shadow-brutal -rotate-1">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-neo-cyan border-[3px] border-black font-mono font-black text-xs uppercase text-black shadow-brutal -rotate-1 hover:rotate-1 transition-transform">
             <Sparkles className="w-4 h-4 fill-black" />
-            <span>DIRECT S3 PRESIGNED // ZERO PAYLOAD BOTTLENECK</span>
+            <span>DIRECT NEON S3 PRESIGNED // ZERO BOTTLENECK</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-black uppercase tracking-tight text-black leading-none max-w-4xl mx-auto">
             Convert Any Image into a{' '}
-            <span className="bg-neo-yellow px-2 border-[3px] border-black inline-block shadow-brutal my-1">
+            <span className="bg-neo-yellow px-2.5 py-0.5 border-[3px] border-black inline-block shadow-brutal my-1 -rotate-1">
               Shareable URL
             </span>{' '}
-            Instantly.
+            <span className="bg-neo-pink px-2.5 py-0.5 border-[3px] border-black inline-block shadow-brutal my-1 rotate-1">
+              Instantly.
+            </span>
           </h1>
 
           <p className="font-mono text-xs sm:text-sm font-bold text-black/80 max-w-xl mx-auto leading-relaxed">
-            High-speed direct-to-cloud upload to Backblaze B2 private bucket storage. Instant
-            short URLs, embed snippets, and serverless Neon database indexing.
+            Ultra-fast direct-to-cloud upload to Neon Object Storage private bucket. Instant short URLs, Markdown/HTML embed snippets, and serverless database indexing.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border-2 border-black font-mono font-black text-xs uppercase shadow-brutal-sm">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-lime border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
               <Zap className="w-3.5 h-3.5 fill-black" />
               10MB MAX PER FILE
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border-2 border-black font-mono font-black text-xs uppercase shadow-brutal-sm">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-cyan border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm rotate-1 hover:scale-105 transition-transform">
               <ShieldCheck className="w-3.5 h-3.5 stroke-[2.5]" />
-              PRIVATE BUCKET GATEWAY
+              PRIVATE OBJECT STORAGE
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-purple border-2 border-black font-mono font-black text-xs uppercase text-white shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
+              <Sparkles className="w-3.5 h-3.5 fill-white" />
+              NEON POSTGRESQL DB
             </span>
           </div>
         </section>
@@ -209,9 +248,9 @@ export const App: React.FC = () => {
         {/* Divider with Neo-brutalist Tag */}
         <div className="relative py-4 flex items-center justify-center">
           <div className="w-full border-t-[3px] border-black" />
-          <div className="absolute px-4 py-1 bg-neo-yellow border-2 border-black font-mono font-black text-xs uppercase shadow-brutal-sm flex items-center gap-1.5">
-            <ArrowDown className="w-3.5 h-3.5 stroke-[3]" />
-            <span>ARCHIVE & RECENT UPLOADS</span>
+          <div className="absolute px-5 py-1.5 bg-neo-pink border-[3px] border-black font-mono font-black text-xs uppercase text-black shadow-brutal flex items-center gap-2 -rotate-1 hover:rotate-1 transition-transform">
+            <ArrowDown className="w-4 h-4 stroke-[3]" />
+            <span>GALLERY & ARCHIVE</span>
           </div>
         </div>
 

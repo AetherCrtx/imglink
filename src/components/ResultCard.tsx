@@ -62,19 +62,22 @@ export const ResultCard: React.FC<ResultCardProps> = ({
   return (
     <div className="w-full bg-white border-[4px] border-black shadow-brutal-xl overflow-hidden animate-fadeIn">
       {/* Neo-brutalist Window Header */}
-      <div className="bg-neo-green border-b-[3px] border-black px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-black" />
-          <span className="font-mono font-black text-xs uppercase tracking-widest text-black">
-            STATUS: 200 OK // IMAGE_DEPLOYED
+      <div className="bg-neo-lime border-b-[3px] border-black px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="w-3.5 h-3.5 bg-neo-red border-2 border-black rounded-full inline-block" />
+          <span className="w-3.5 h-3.5 bg-neo-yellow border-2 border-black rounded-full inline-block" />
+          <span className="w-3.5 h-3.5 bg-neo-cyan border-2 border-black rounded-full inline-block" />
+          <span className="font-mono font-black text-xs uppercase tracking-wider text-black ml-1.5 flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 fill-black" />
+            <span>STATUS: 200 OK // IMAGE_DEPLOYED</span>
           </span>
         </div>
 
         <button
           onClick={onUploadAnother}
-          className="px-3 py-1 bg-white hover:bg-black hover:text-white border-2 border-black font-black uppercase text-xs shadow-brutal-sm transition-all flex items-center gap-1 active:translate-x-0.5 active:translate-y-0.5"
+          className="px-3.5 py-1.5 bg-neo-yellow hover:bg-neo-pink border-2 border-black font-black uppercase text-xs text-black shadow-brutal-sm transition-all flex items-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5"
         >
-          <PlusCircle className="w-3.5 h-3.5" />
+          <PlusCircle className="w-3.5 h-3.5 stroke-[2.5]" />
           <span>Upload Another</span>
         </button>
       </div>
@@ -102,7 +105,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({
               href={publicUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="absolute top-3 right-3 p-2 bg-white border-2 border-black text-black hover:bg-neo-yellow shadow-brutal-sm transition-all"
+              className="absolute top-3 right-3 p-2 bg-neo-cyan hover:bg-neo-yellow border-2 border-black text-black shadow-brutal-sm transition-all"
               title="Open full view"
             >
               <ExternalLink className="w-4 h-4 stroke-[2.5]" />
@@ -110,12 +113,12 @@ export const ResultCard: React.FC<ResultCardProps> = ({
           </div>
 
           {/* Details Bar */}
-          <div className="p-3 bg-neo-bg border-2 border-black shadow-brutal-sm flex items-center justify-between font-mono text-xs">
+          <div className="p-3 bg-neo-cyan/10 border-2 border-black shadow-brutal-sm flex items-center justify-between font-mono text-xs">
             <span className="font-black text-black truncate max-w-[200px]">
               {image.originalName}
             </span>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 bg-black text-white font-bold uppercase text-[10px]">
+              <span className="px-2 py-0.5 bg-neo-yellow border border-black font-black uppercase text-[10px] text-black">
                 {image.mimeType.replace('image/', '')}
               </span>
               <span className="font-bold text-black">{formatBytes(image.sizeBytes)}</span>
@@ -126,19 +129,26 @@ export const ResultCard: React.FC<ResultCardProps> = ({
         {/* Right: Snippet Selector & Copy Buttons */}
         <div className="lg:col-span-7 flex flex-col justify-between gap-6">
           <div className="space-y-4">
-            {/* Format Switcher */}
+            {/* Format Switcher with Distinct Tab Colors */}
             <div className="grid grid-cols-3 gap-2 p-1 bg-neo-bg border-[3px] border-black shadow-brutal-sm">
               {(Object.keys(snippets) as SnippetType[]).map((type) => {
                 const item = snippets[type];
                 const isActive = activeTab === type;
+                const tabColor =
+                  type === 'direct'
+                    ? 'bg-neo-yellow'
+                    : type === 'markdown'
+                    ? 'bg-neo-cyan'
+                    : 'bg-neo-pink';
+
                 return (
                   <button
                     key={type}
                     onClick={() => setActiveTab(type)}
                     className={`py-2 px-2 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
                       isActive
-                        ? 'bg-black text-white shadow-sm'
-                        : 'bg-transparent text-black hover:bg-black/10'
+                        ? `${tabColor} text-black border-2 border-black shadow-brutal-sm`
+                        : 'bg-transparent text-black hover:bg-black/10 border-2 border-transparent'
                     }`}
                   >
                     {item.icon}
@@ -164,7 +174,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({
                 <button
                   onClick={() => handleCopy(activeTab, snippets[activeTab].value)}
                   className={`px-6 py-3 border-[3px] border-black font-black uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 shadow-brutal hover:shadow-brutal-lg ${
-                    copiedType === activeTab ? 'bg-neo-green text-black' : 'bg-neo-yellow text-black'
+                    copiedType === activeTab ? 'bg-neo-lime text-black' : 'bg-neo-yellow hover:bg-neo-cyan text-black'
                   }`}
                 >
                   {copiedType === activeTab ? (

@@ -287,34 +287,34 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
 
       {/* Auth Gate Banner (If not logged in) */}
       {!user ? (
-        <div className="p-8 md:p-10 bg-white border-[4px] border-black shadow-brutal-lg text-center space-y-6">
-          <div className="inline-block p-4 bg-neo-yellow border-[3px] border-black shadow-brutal -rotate-2">
+        <div className="p-8 md:p-10 bg-white border-[4px] border-black shadow-brutal-xl text-center space-y-6 relative overflow-hidden">
+          <div className="inline-block p-4 bg-neo-yellow border-[3px] border-black shadow-brutal -rotate-2 hover:rotate-2 transition-transform">
             <Lock className="w-10 h-10 text-black stroke-[2.5]" />
           </div>
 
           <div className="space-y-2 max-w-lg mx-auto">
-            <div className="inline-block px-3 py-1 bg-neo-pink border-2 border-black font-mono font-black text-xs uppercase shadow-brutal-sm">
-              ACCESS LOCKED
+            <div className="inline-block px-3 py-1 bg-neo-pink border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm rotate-1">
+              ★ ACCESS RESTRICTED
             </div>
             <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-black">
               Sign In To Upload Images
             </h3>
-            <p className="font-mono text-xs text-black/70 font-semibold leading-relaxed">
-              Create an account or log in to generate permanent shareable URLs, direct-to-cloud B2 storage, and manage your image history.
+            <p className="font-mono text-xs text-black/80 font-bold leading-relaxed">
+              Create a free account or login with Google to generate permanent shareable URLs, direct S3 cloud storage, and view your complete archive.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
               onClick={() => onOpenAuth('login')}
-              className="px-6 py-3.5 bg-neo-yellow hover:bg-[#ffea30] active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center gap-2"
+              className="px-6 py-3.5 bg-neo-yellow hover:bg-neo-lime active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all flex items-center gap-2"
             >
               <span>Sign In Now</span>
               <ArrowRight className="w-4 h-4 stroke-[3]" />
             </button>
             <button
               onClick={() => onOpenAuth('register')}
-              className="px-6 py-3.5 bg-white hover:bg-neo-bg active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all"
+              className="px-6 py-3.5 bg-neo-cyan hover:bg-neo-pink active:translate-x-1 active:translate-y-1 border-[3px] border-black font-black uppercase text-sm tracking-wider text-black shadow-brutal hover:shadow-brutal-lg transition-all"
             >
               Register Free
             </button>
@@ -327,19 +327,32 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => !isUploading && fileInputRef.current?.click()}
-          className={`relative group bg-white border-[4px] border-black p-8 md:p-12 transition-all duration-200 text-center select-none cursor-pointer ${
+          className={`relative group bg-white border-[4px] border-black p-8 md:p-12 transition-all duration-200 text-center select-none cursor-pointer overflow-hidden ${
             isDragging
-              ? 'bg-neo-yellow/30 shadow-brutal-xl scale-[1.01]'
+              ? 'bg-neo-cyan/20 shadow-brutal-xl scale-[1.01]'
               : isUploading
               ? 'bg-neo-bg cursor-wait shadow-brutal'
               : 'shadow-brutal-lg hover:shadow-brutal-xl hover:-translate-x-0.5 hover:-translate-y-0.5'
           }`}
         >
+          {/* Retro Window Header Bar */}
+          <div className="bg-neo-yellow border-b-[3px] border-black px-4 py-2 flex items-center justify-between text-black font-mono font-black text-xs uppercase -mt-8 -mx-8 md:-mt-12 md:-mx-12 mb-6">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 bg-neo-red border-2 border-black rounded-full inline-block" />
+              <span className="w-3 h-3 bg-neo-yellow border-2 border-black rounded-full inline-block" />
+              <span className="w-3 h-3 bg-neo-lime border-2 border-black rounded-full inline-block" />
+              <span className="ml-2 tracking-wider">SNAPLINK // DIRECT_STORAGE_CLIENT</span>
+            </div>
+            <span className="px-2 py-0.5 bg-black text-white text-[10px] tracking-widest font-black">
+              {isUploading ? 'UPLOADING' : 'ONLINE'}
+            </span>
+          </div>
+
           {isUploading && progress ? (
             /* Uploading Progress State */
             <div className="py-4 px-2 max-w-lg mx-auto space-y-6">
               <div className="flex justify-center">
-                <div className="w-16 h-16 bg-neo-yellow border-[3px] border-black shadow-brutal flex items-center justify-center text-black">
+                <div className="w-16 h-16 bg-neo-cyan border-[3px] border-black shadow-brutal flex items-center justify-center text-black">
                   {progress.stage === 'completed' ? (
                     <CheckCircle2 className="w-9 h-9 text-black stroke-[3]" />
                   ) : (
@@ -361,7 +374,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
               <div className="w-full bg-white border-[3px] border-black h-8 p-1 shadow-brutal overflow-hidden">
                 <div
                   className={`h-full border-r-2 border-black transition-all duration-200 ${
-                    progress.stage === 'completed' ? 'bg-neo-green' : 'bg-neo-yellow'
+                    progress.stage === 'completed' ? 'bg-neo-lime' : 'bg-neo-cyan'
                   }`}
                   style={{ width: `${progress.percent}%` }}
                 />
@@ -379,40 +392,40 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           ) : (
             /* Ready to Upload State */
             <div className="flex flex-col items-center justify-center gap-5 py-2">
-              <div className="w-20 h-20 bg-neo-yellow border-[3px] border-black shadow-brutal flex items-center justify-center text-black group-hover:rotate-3 group-hover:scale-105 transition-all">
+              <div className="w-20 h-20 bg-neo-yellow group-hover:bg-neo-pink border-[3px] border-black shadow-brutal flex items-center justify-center text-black group-hover:rotate-6 group-hover:scale-105 transition-all">
                 <UploadCloud className="w-10 h-10 stroke-[2.5]" />
               </div>
 
               <div className="space-y-2">
                 <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-black">
                   Drag & Drop Image Here, or{' '}
-                  <span className="bg-neo-yellow px-1 border-2 border-black underline decoration-2">
+                  <span className="bg-neo-cyan px-2 py-0.5 border-2 border-black shadow-brutal-sm inline-block -rotate-1">
                     Browse
                   </span>
                 </h3>
                 <p className="font-mono text-xs font-bold text-black/80">
                   Clipboard paste supported:{' '}
-                  <kbd className="px-2 py-1 bg-black text-white text-xs font-mono font-bold shadow-brutal-sm">
+                  <kbd className="px-2 py-1 bg-neo-pink text-black border-2 border-black text-xs font-mono font-black shadow-brutal-sm">
                     CTRL + V
                   </kbd>{' '}
                   or{' '}
-                  <kbd className="px-2 py-1 bg-black text-white text-xs font-mono font-bold shadow-brutal-sm">
+                  <kbd className="px-2 py-1 bg-neo-cyan text-black border-2 border-black text-xs font-mono font-black shadow-brutal-sm">
                     ⌘ + V
                   </kbd>
                 </p>
               </div>
 
               {/* Neo-brutalist Badges */}
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border-2 border-black font-mono font-black text-xs uppercase shadow-brutal-sm -rotate-1">
+              <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-yellow border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
                   <ImageIcon className="w-3.5 h-3.5" />
                   PNG, JPG, WEBP, GIF
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-green/30 border-2 border-black font-mono font-black text-xs uppercase shadow-brutal-sm rotate-1">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-lime border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm rotate-1 hover:scale-105 transition-transform">
                   <FileUp className="w-3.5 h-3.5" />
                   MAX 10MB
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-cyan/30 border-2 border-black font-mono font-black text-xs uppercase shadow-brutal-sm -rotate-1">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-neo-cyan border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
                   <Sparkles className="w-3.5 h-3.5" />
                   DIRECT S3 PRESIGNED
                 </span>

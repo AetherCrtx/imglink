@@ -12,8 +12,26 @@
   }
 
   ::selection {
-    background-color: #FFE600;
+    background-color: #00E5FF;
     color: #000000;
+  }
+
+  /* Neo-brutalist Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #FAF8F0;
+    border-left: 2px solid #000000;
+    border-top: 2px solid #000000;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #FFE600;
+    border: 2px solid #000000;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #FF5CAA;
   }
 }
 
