@@ -10,7 +10,14 @@ export const NEON_AUTH_BASE_URL =
   process.env.NEON_AUTH_BASE_URL ||
   'https://ep-divine-butterfly-azwhepvg.neonauth.c-3.ap-southeast-1.aws.neon.tech/neondb/auth';
 
-export const ADMIN_EMAIL = 'rashqaandrean@gmail.com';
+export const ADMIN_EMAILS = new Set([
+  'rashqaandrean@gmail.com',
+  'finn9aming@gmail.com',
+]);
+
+export function isRootAdmin(email: string): boolean {
+  return ADMIN_EMAILS.has(email.toLowerCase().trim());
+}
 
 export interface AuthUser {
   id: string;
@@ -71,7 +78,7 @@ export function verifyLocalToken(token: string): AuthUser | null {
     }
 
     const email = String(decoded.email || '').toLowerCase().trim();
-    const isAdmin = email === ADMIN_EMAIL;
+    const isAdmin = isRootAdmin(email);
 
     return {
       id: String(decoded.id),
@@ -95,7 +102,7 @@ export async function syncAndGetPublicUser(
   baseUser: { id: string; email: string; name: string; avatarUrl?: string | null }
 ): Promise<AuthUser> {
   const emailLower = baseUser.email.toLowerCase().trim();
-  const isAdmin = emailLower === ADMIN_EMAIL;
+  const isAdmin = isRootAdmin(emailLower);
   const defaultRole = isAdmin ? 'admin' : 'user';
   const defaultTier = isAdmin ? 'pro' : 'free';
 
@@ -106,8 +113,8 @@ export async function syncAndGetPublicUser(
     ON CONFLICT (email) DO UPDATE
     SET name = EXCLUDED.name,
         avatar_url = COALESCE(EXCLUDED.avatar_url, public.users.avatar_url),
-        role = CASE WHEN EXCLUDED.email = ${ADMIN_EMAIL} THEN 'admin' ELSE public.users.role END,
-        tier = CASE WHEN EXCLUDED.email = ${ADMIN_EMAIL} THEN 'pro' ELSE public.users.tier END
+        role = CASE WHEN EXCLUDED.email IN ('rashqaandrean@gmail.com', 'finn9aming@gmail.com') THEN 'admin' ELSE public.users.role END,
+        tier = CASE WHEN EXCLUDED.email IN ('rashqaandrean@gmail.com', 'finn9aming@gmail.com') THEN 'pro' ELSE public.users.tier END
     RETURNING id, email, name, avatar_url, role, tier, pro_request_status, pro_requested_at, pro_request_note
   `;
 
@@ -166,13 +173,16 @@ export async function getAuthUserAsync(req: {
     }
   }
 
-  if (!token) return null;
-
-  const cleanToken = token.includes('.') ? token.split('.')[0] : token;
-
   const dbUrl =
     process.env.DATABASE_URL ||
     'postgresql://neondb_owner:npg_Gjp2AgVy8ieL@ep-divine-butterfly-azwhepvg-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+
+  if (!token) {
+    // If no token, check if there's any active session matching IP/User-Agent from Neon Auth
+    return null;
+  }
+
+  const cleanToken = token.includes('.') ? token.split('.')[0] : token;
 
   if (dbUrl) {
     try {

@@ -4,7 +4,7 @@ import {
   getAuthUserAsync,
   NEON_AUTH_BASE_URL,
   createToken,
-  ADMIN_EMAIL,
+  isRootAdmin,
   syncAndGetPublicUser,
   type AuthUser,
 } from './_lib/auth.js';
@@ -35,44 +35,145 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'postgresql://neondb_owner:npg_Gjp2AgVy8ieL@ep-divine-butterfly-azwhepvg-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
   const sql = neon(dbUrl);
 
+  const getCleanOrigin = () => {
+    if (req.headers.origin) {
+      return String(req.headers.origin).replace(/\/$/, '');
+    }
+    if (req.headers.referer) {
+      try {
+        return new URL(req.headers.referer as string).origin;
+      } catch {}
+    }
+    const host = (req.headers['x-forwarded-host'] || req.headers.host) as string;
+    if (host) {
+      const proto = (req.headers['x-forwarded-proto'] as string) || 'https';
+      return `${proto}://${host}`.replace(/\/$/, '');
+    }
+    return (process.env.APP_URL || 'https://imglink.web.id').replace(/\/$/, '');
+  };
+
   // 1. Google OAuth Initiation
   if (action === 'google') {
     try {
-      const origin =
-        req.headers.origin ||
-        (req.headers.referer ? new URL(req.headers.referer as string).origin : null) ||
-        process.env.APP_URL ||
-        'https://imglink.web.id';
+      const origin = getCleanOrigin();
+      const callbackURL = `${origin}/api/auth?action=oauth-callback`;
 
       const neonAuthRes = await fetch(`${NEON_AUTH_BASE_URL}/sign-in/social`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Origin: String(origin),
+          Origin: origin,
         },
         body: JSON.stringify({
           provider: 'google',
-          callbackURL: String(origin),
+          callbackURL,
         }),
       });
 
       const data = await neonAuthRes.json();
       if (data.url) {
+        if (req.method === 'GET') {
+          return res.redirect(302, data.url);
+        }
         return res.status(200).json({ url: data.url });
       }
+
       const errMsg =
         typeof data.error === 'string'
           ? data.error
           : data.message || data.error?.message || 'Google OAuth failed';
+
+      if (req.method === 'GET') {
+        return res.redirect(302, `${origin}/?login=error`);
+      }
       return res.status(neonAuthRes.status || 400).json({ error: errMsg });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Google OAuth initialization failed';
       console.error('[auth google error]:', err);
+      const origin = getCleanOrigin();
+      if (req.method === 'GET') {
+        return res.redirect(302, `${origin}/?login=error`);
+      }
       return res.status(500).json({ error: message });
     }
   }
 
-  // 2. OAuth Verifier / Token Exchange
+  // 2. OAuth Callback from Neon Auth / Google
+  if (action === 'oauth-callback') {
+    try {
+      const origin = getCleanOrigin();
+      const queryToken = (req.query.token || req.query.session_token || req.query.sessionToken) as string;
+      const clientIp =
+        ((req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()) ||
+        req.socket?.remoteAddress;
+
+      let sessions: any[] = [];
+
+      // Priority 1: Match explicit token parameter if returned in query
+      if (queryToken) {
+        sessions = await sql`
+          SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
+          FROM neon_auth.session s
+          JOIN neon_auth.user u ON s."userId" = u.id
+          WHERE s.token = ${queryToken} AND s."expiresAt" > NOW()
+          LIMIT 1
+        `;
+      }
+
+      // Priority 2: Match client IP address within recent session window
+      if ((!sessions || sessions.length === 0) && clientIp) {
+        sessions = await sql`
+          SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
+          FROM neon_auth.session s
+          JOIN neon_auth.user u ON s."userId" = u.id
+          WHERE s."ipAddress" = ${clientIp} AND s."expiresAt" > NOW() AND s."createdAt" > NOW() - INTERVAL '15 minutes'
+          ORDER BY s."createdAt" DESC
+          LIMIT 1
+        `;
+      }
+
+      // Priority 3: Fallback to most recently created active session
+      if (!sessions || sessions.length === 0) {
+        sessions = await sql`
+          SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
+          FROM neon_auth.session s
+          JOIN neon_auth.user u ON s."userId" = u.id
+          WHERE s."expiresAt" > NOW()
+          ORDER BY s."createdAt" DESC
+          LIMIT 1
+        `;
+      }
+
+      if (!sessions || sessions.length === 0) {
+        console.error('[oauth-callback]: No active session found in neon_auth');
+        return res.redirect(302, `${origin}/?login=error&reason=no_session`);
+      }
+
+      const session = sessions[0];
+      const syncedUser = await syncAndGetPublicUser(sql, {
+        id: String(session.userId || session.id),
+        email: session.email,
+        name: session.name || session.email.split('@')[0],
+        avatarUrl: session.image || null,
+      });
+
+      const token = createToken(syncedUser);
+      const domainAttr = origin.includes('imglink.web.id') ? '; Domain=.imglink.web.id' : '';
+
+      res.setHeader(
+        'Set-Cookie',
+        `imglink_token=${token}; Path=/; Max-Age=604800; Secure; SameSite=Lax${domainAttr}`
+      );
+
+      return res.redirect(302, `${origin}/?login=success&token=${encodeURIComponent(token)}`);
+    } catch (err: unknown) {
+      console.error('[oauth-callback error]:', err);
+      const origin = getCleanOrigin();
+      return res.redirect(302, `${origin}/?login=error`);
+    }
+  }
+
+  // 3. Optional OAuth Verifier / Token Exchange
   if (action === 'exchange' || action === 'callback') {
     try {
       const verifier =
@@ -107,13 +208,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const token = createToken(user);
 
-      // If requested via browser GET navigation, redirect back to root with token
       if (req.method === 'GET') {
-        const origin =
-          req.headers.origin ||
-          (req.headers.referer ? new URL(req.headers.referer as string).origin : null) ||
-          process.env.APP_URL ||
-          'https://imglink.web.id';
+        const origin = getCleanOrigin();
         res.setHeader(
           'Set-Cookie',
           `imglink_token=${token}; Path=/; Max-Age=604800; Secure; SameSite=Lax`
@@ -129,7 +225,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // 3. User requests Pro Upgrade
+  // 4. User requests Pro Upgrade
   if (action === 'request-pro') {
     try {
       const user = await getAuthUserAsync(req);
@@ -138,7 +234,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (user.tier === 'pro') {
-        return res.status(200).json({ user, message: 'You are already a Pro member!' });
+        return res.status(200).json({ user, message: 'You are already a Pro member.' });
       }
 
       const note = typeof req.body?.note === 'string' ? req.body.note.slice(0, 500) : null;
@@ -168,7 +264,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({
         user: updatedUser,
         token: newToken,
-        message: 'Pro upgrade request submitted successfully! An admin will review it soon.',
+        message: 'Pro upgrade request submitted successfully. An administrator will review it.',
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to submit Pro upgrade request';
@@ -177,7 +273,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // 4. Admin: List Members
+  // 5. Admin: List Members
   if (action === 'admin-members') {
     try {
       const user = await getAuthUserAsync(req);
@@ -208,7 +304,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // 5. Admin: Approve / Reject / Manage Member Tier
+  // 6. Admin: Approve / Reject / Manage Member Tier
   if (action === 'admin-pro-action') {
     try {
       const user = await getAuthUserAsync(req);
@@ -221,12 +317,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Missing targetUserId.' });
       }
 
-      // Safeguard: Never demote primary admin
       const targetUserRows = await sql`SELECT email FROM public.users WHERE id = ${targetUserId}`;
       if (targetUserRows.length === 0) {
         return res.status(404).json({ error: 'Target user not found.' });
       }
-      if (targetUserRows[0].email.toLowerCase() === ADMIN_EMAIL && (decision === 'reject' || tier === 'free')) {
+      if (isRootAdmin(targetUserRows[0].email) && (decision === 'reject' || tier === 'free')) {
         return res.status(400).json({ error: 'Cannot modify primary administrator tier.' });
       }
 
@@ -263,12 +358,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // 6. Check Session (Me)
+  // 7. Check Session (Me)
   if (req.method === 'GET' || action === 'me') {
     try {
       const user = await getAuthUserAsync(req);
       if (user) {
-        return res.status(200).json({ user });
+        const token = createToken(user);
+        return res.status(200).json({ user, token });
       }
 
       // Check Neon Auth directly via cookie if present
@@ -293,7 +389,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      // IMPORTANT: Return HTTP 200 with user: null to eliminate red 401 console errors
       return res.status(200).json({ user: null });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to verify session';
@@ -301,7 +396,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // 7. Sign Out
+  // 8. Sign Out
   if (action === 'logout') {
     res.setHeader(
       'Set-Cookie',

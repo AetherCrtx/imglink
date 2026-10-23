@@ -75,12 +75,15 @@ export const App: React.FC = () => {
       cleanUrl.searchParams.delete('login');
       window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
 
+      try {
+        localStorage.setItem('imglink_auth_token', tokenParam);
+      } catch {}
       axios.defaults.headers.common['Authorization'] = `Bearer ${tokenParam}`;
       axios
         .get<{ user: AuthUser | null; token?: string }>('/api/auth')
         .then((res) => {
           if (res.data.user) {
-            setAuthSession(tokenParam, res.data.user);
+            setAuthSession(res.data.token || tokenParam, res.data.user);
             setUser(res.data.user);
             setActionNotice({
               message: `WELCOME, ${res.data.user.name.toUpperCase()}!`,
@@ -225,39 +228,39 @@ export const App: React.FC = () => {
         onOpenProModal={() => setIsProModalOpen(true)}
       />
 
-      {/* Neo-brutalist Infinite Ticker Tape */}
+      {/* Neo-brutalist Ticker Tape */}
       <div className="bg-neo-yellow border-b-[3px] border-black overflow-hidden py-2 select-none">
         <div className="flex w-max animate-marquee space-x-6 text-xs font-mono font-black uppercase tracking-wider text-black">
           {[1, 2].map((k) => (
             <div key={k} className="flex items-center space-x-6">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-pink text-black border-2 border-black shadow-brutal-sm rotate-1">
-                ⚡ 100% PRIVATE & SECURE HOSTING
+              <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-pink text-black border-2 border-black shadow-brutal-sm rotate-1">
+                PRIVATE AND SECURE HOSTING
               </span>
-              <span>✦</span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-cyan text-black border-2 border-black shadow-brutal-sm -rotate-1">
-                ★ GOOGLE VERIFIED IDENTITY
+              <span className="font-bold">//</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-cyan text-black border-2 border-black shadow-brutal-sm -rotate-1">
+                GOOGLE VERIFIED IDENTITY
               </span>
-              <span>✦</span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-lime text-black border-2 border-black shadow-brutal-sm rotate-2">
-                ⚡ DIRECT HIGH-SPEED STREAMING
+              <span className="font-bold">//</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-lime text-black border-2 border-black shadow-brutal-sm rotate-2">
+                DIRECT HIGH SPEED STREAMING
               </span>
-              <span>✦</span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-purple text-white border-2 border-black shadow-brutal-sm -rotate-1">
-                ★ 10MB ULTRA-FAST PIPELINE
+              <span className="font-bold">//</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-purple text-white border-2 border-black shadow-brutal-sm -rotate-1">
+                10MB MAX PIPELINE
               </span>
-              <span>✦</span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-orange text-black border-2 border-black shadow-brutal-sm rotate-1">
-                ⚡ INSTANT SHORT & EMBED URLS
+              <span className="font-bold">//</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-orange text-black border-2 border-black shadow-brutal-sm rotate-1">
+                SHORT AND EMBED URLS
               </span>
-              <span>✦</span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white text-black border-2 border-black shadow-brutal-sm -rotate-2">
-                ★ CLIPBOARD PASTE CTRL+V
+              <span className="font-bold">//</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 bg-white text-black border-2 border-black shadow-brutal-sm -rotate-2">
+                CLIPBOARD PASTE SUPPORT
               </span>
-              <span>✦</span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-neo-lime text-black border-2 border-black shadow-brutal-sm rotate-1">
-                ★ UNLIMITED PRO TIER
+              <span className="font-bold">//</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-lime text-black border-2 border-black shadow-brutal-sm rotate-1">
+                UNLIMITED PRO TIER
               </span>
-              <span>✦</span>
+              <span className="font-bold">//</span>
             </div>
           ))}
         </div>

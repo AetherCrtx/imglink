@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { X, ShieldCheck, Loader2, AlertCircle, Sparkles, CheckCircle2 } from 'lucide-react';
 import type { AuthUser } from '../types';
 
@@ -18,40 +17,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const parseErrorMessage = (err: unknown, fallback: string): string => {
-    if (axios.isAxiosError(err)) {
-      const data = err.response?.data;
-      if (typeof data === 'string') return data;
-      if (data && typeof data === 'object') {
-        if (typeof data.error === 'string') return data.error;
-        if (data.error && typeof data.error === 'object') {
-          if (typeof data.error.message === 'string') return data.error.message;
-        }
-        if (typeof data.message === 'string') return data.message;
-      }
-      if (err.message) return err.message;
-    }
-    if (err instanceof Error) return err.message;
-    return fallback;
-  };
-
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setIsGoogleLoading(true);
     setErrorMessage(null);
-    try {
-      const response = await axios.post<{ url: string }>('/api/auth', {
-        action: 'google',
-      });
-      if (response.data.url) {
-        window.location.href = response.data.url;
-      } else {
-        setErrorMessage('Failed to initiate Google authentication. Please try again.');
-        setIsGoogleLoading(false);
-      }
-    } catch (err: unknown) {
-      setIsGoogleLoading(false);
-      setErrorMessage(parseErrorMessage(err, 'Failed to connect to Google authentication.'));
-    }
+    // Direct top-level navigation to OAuth gateway
+    window.location.href = '/api/auth?action=google';
   };
 
   return (
@@ -68,7 +38,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 Google Authentication
               </h2>
               <span className="text-[11px] font-mono font-bold text-black/70 block">
-                Secure 1-Click Access
+                Secure Single Sign-On
               </span>
             </div>
           </div>
@@ -87,12 +57,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-black fill-neo-yellow" />
               <span className="font-mono text-xs font-black uppercase text-black">
-                Enhanced Security Policy
+                Authentication Policy
               </span>
             </div>
             <p className="font-mono text-[11px] leading-relaxed text-black/80">
-              For security, authentication is exclusively provided via verified Google
-              Accounts. No passwords to remember, zero risk of credential leaks.
+              Authentication is provided exclusively via verified Google
+              Accounts. No passwords to remember, eliminating credential stuffing and password reuse risks.
             </p>
           </div>
 
@@ -113,7 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {isGoogleLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin text-black stroke-[3]" />
-                  <span>Connecting to Google...</span>
+                  <span>Redirecting to Google...</span>
                 </>
               ) : (
                 <>
@@ -141,15 +111,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </button>
           </div>
 
-          {/* Trust Features Checklist */}
+          {/* Features Checklist */}
           <div className="border-t-2 border-black pt-4 grid grid-cols-2 gap-2 text-[10px] font-mono font-black uppercase text-black/75">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-black stroke-[3]" />
-              <span>Instant Sign In</span>
+              <span>Direct Sign In</span>
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-black stroke-[3]" />
-              <span>Free 3 Uploads</span>
+              <span>3 Free Uploads</span>
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-black stroke-[3]" />
@@ -157,7 +127,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-black stroke-[3]" />
-              <span>Secure Session</span>
+              <span>Encrypted Session</span>
             </div>
           </div>
         </div>

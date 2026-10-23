@@ -116,20 +116,23 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
               </div>
               <ul className="space-y-1.5 text-[11px] font-bold text-black/80">
                 <li className="flex items-center gap-1.5">
-                  <span className="text-black font-black">✕</span> Max 3 Image Uploads
+                  <span className="w-1.5 h-1.5 bg-black inline-block flex-shrink-0" />
+                  <span>Max 3 Image Uploads</span>
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <span className="text-black font-black">✓</span> 10MB per Image
+                  <span className="w-1.5 h-1.5 bg-black inline-block flex-shrink-0" />
+                  <span>10MB per Image</span>
                 </li>
                 <li className="flex items-center gap-1.5">
-                  <span className="text-black font-black">✓</span> Direct Share Links
+                  <span className="w-1.5 h-1.5 bg-black inline-block flex-shrink-0" />
+                  <span>Direct Share Links</span>
                 </li>
               </ul>
             </div>
 
             <div className="border-[3px] border-black p-3 bg-neo-yellow shadow-brutal-sm space-y-2">
               <div className="font-black text-xs uppercase bg-neo-lime text-black px-2 py-0.5 border border-black inline-block">
-                ★ Pro Member
+                Pro Member
               </div>
               <ul className="space-y-1.5 text-[11px] font-black text-black">
                 <li className="flex items-center gap-1.5">
@@ -220,7 +223,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
               </div>
 
               <div className="bg-white border-2 border-black p-3 font-mono text-[11px] text-black/80 shadow-brutal-sm">
-                💡 <span className="font-black">Pro requests are free!</span> An admin will review and approve your request shortly.
+                <span className="font-black text-black">NOTE:</span> Pro upgrade requests are free. An administrator will review your account.
               </div>
 
               <button

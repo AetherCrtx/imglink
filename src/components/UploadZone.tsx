@@ -322,7 +322,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
 
           <div className="space-y-2 max-w-lg mx-auto">
             <div className="inline-block px-3 py-1 bg-neo-pink border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm rotate-1">
-              ★ ACCESS RESTRICTED
+              ACCESS RESTRICTED
             </div>
             <h3 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight text-black">
               Sign In To Upload Images
@@ -351,7 +351,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
 
           <div className="space-y-2 max-w-lg mx-auto">
             <div className="inline-block px-3 py-1 bg-neo-pink border-2 border-black font-mono font-black text-xs uppercase text-black shadow-brutal-sm rotate-1">
-              ★ FREE QUOTA FULL (3 / 3 IMAGES)
+              FREE QUOTA FULL // 3 OF 3 IMAGES
             </div>
             <h3 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight text-black">
               Free Limit Reached!
