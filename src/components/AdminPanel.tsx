@@ -33,15 +33,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [filterTier, setFilterTier] = useState<'all' | 'pending' | 'pro' | 'free'>('all');
   const [notice, setNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const getAdminKey = () => sessionStorage.getItem('imglink_admin_secret') || '020709';
+  const getAdminKey = () =>
+    sessionStorage.getItem('imglink_admin_secret') ||
+    localStorage.getItem('imglink_admin_secret') ||
+    '020709';
 
   const fetchMembers = useCallback(async () => {
     setIsLoading(true);
     try {
+      const key = getAdminKey();
       const res = await axios.get<{ members: AdminMemberRecord[] }>('/api/auth', {
-        params: { action: 'admin-members' },
+        params: { action: 'admin-members', adminKey: key },
         headers: {
-          'x-admin-key': getAdminKey(),
+          'x-admin-key': key,
         },
       });
       if (Array.isArray(res.data.members)) {
@@ -49,8 +53,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       }
     } catch (err: unknown) {
       console.error('Failed to load admin members:', err);
+      let errorMsg = 'FAILED TO LOAD MEMBERS. ADMIN ACCESS REQUIRED.';
+      if (axios.isAxiosError(err) && err.response?.data?.error) {
+        errorMsg = err.response.data.error.toUpperCase();
+      }
       setNotice({
-        message: 'FAILED TO LOAD MEMBERS. ADMIN ACCESS REQUIRED.',
+        message: errorMsg,
         type: 'error',
       });
     } finally {
@@ -74,17 +82,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setActionLoadingId(targetUserId);
     setNotice(null);
     try {
+      const key = getAdminKey();
       await axios.post(
         '/api/auth',
         {
           action: 'admin-pro-action',
+          adminKey: key,
           targetUserId,
           decision,
           tier,
         },
         {
+          params: { adminKey: key },
           headers: {
-            'x-admin-key': getAdminKey(),
+            'x-admin-key': key,
           },
         }
       );

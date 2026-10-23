@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-Admin-Key, x-admin-key, X-Admin-Secret, x-admin-secret'
   );
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -337,14 +337,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 6. Admin: List Members
   if (action === 'admin-members') {
     try {
-      const adminKeyHeader =
+      const adminKey =
         (req.headers['x-admin-key'] as string) ||
         (req.headers['x-admin-secret'] as string) ||
-        req.body?.adminKey;
+        (req.query.adminKey as string) ||
+        (req.query.key as string) ||
+        req.body?.adminKey ||
+        req.body?.key;
       const user = await getAuthUserAsync(req);
 
       const isAuthorized =
-        adminKeyHeader === '020709' || (user && user.role === 'admin');
+        adminKey === '020709' || (user && user.role === 'admin');
 
       if (!isAuthorized) {
         return res.status(403).json({ error: 'Access denied. Secret admin clearance required.' });
@@ -376,14 +379,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 7. Admin: Approve / Reject / Manage Member Tier
   if (action === 'admin-pro-action') {
     try {
-      const adminKeyHeader =
+      const adminKey =
         (req.headers['x-admin-key'] as string) ||
         (req.headers['x-admin-secret'] as string) ||
-        req.body?.adminKey;
+        (req.query.adminKey as string) ||
+        (req.query.key as string) ||
+        req.body?.adminKey ||
+        req.body?.key;
       const user = await getAuthUserAsync(req);
 
       const isAuthorized =
-        adminKeyHeader === '020709' || (user && user.role === 'admin');
+        adminKey === '020709' || (user && user.role === 'admin');
 
       if (!isAuthorized) {
         return res.status(403).json({ error: 'Access denied. Secret admin clearance required.' });

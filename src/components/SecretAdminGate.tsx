@@ -14,13 +14,19 @@ export const SecretAdminGate: React.FC<SecretAdminGateProps> = ({
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(() => {
-    return sessionStorage.getItem('imglink_admin_secret') === '020709';
+    return (
+      sessionStorage.getItem('imglink_admin_secret') === '020709' ||
+      localStorage.getItem('imglink_admin_secret') === '020709'
+    );
   });
 
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
     if (password.trim() === '020709') {
-      sessionStorage.setItem('imglink_admin_secret', '020709');
+      try {
+        sessionStorage.setItem('imglink_admin_secret', '020709');
+        localStorage.setItem('imglink_admin_secret', '020709');
+      } catch {}
       setIsUnlocked(true);
       setError(null);
     } else {
