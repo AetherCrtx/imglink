@@ -27,6 +27,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
+  const parseErrorMessage = (err: unknown, fallback: string): string => {
+    if (axios.isAxiosError(err)) {
+      const data = err.response?.data;
+      if (typeof data === 'string') return data;
+      if (data && typeof data === 'object') {
+        if (typeof data.error === 'string') return data.error;
+        if (data.error && typeof data.error === 'object') {
+          if (typeof data.error.message === 'string') return data.error.message;
+          if (typeof data.error.code === 'string') return `${data.error.code}: ${data.error.message || ''}`;
+        }
+        if (typeof data.message === 'string') return data.message;
+        if (typeof data.code === 'string') return `${data.code}: ${data.message || ''}`;
+      }
+      if (err.message) return err.message;
+    }
+    if (err instanceof Error) return err.message;
+    return fallback;
+  };
+
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     setErrorMessage(null);
@@ -42,11 +61,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
     } catch (err: unknown) {
       setIsGoogleLoading(false);
-      if (axios.isAxiosError(err) && err.response?.data?.error) {
-        setErrorMessage(err.response.data.error);
-      } else {
-        setErrorMessage('Failed to connect to Google OAuth.');
-      }
+      setErrorMessage(parseErrorMessage(err, 'Failed to connect to Google OAuth.'));
     }
   };
 
@@ -75,13 +90,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
       }
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.error) {
-        setErrorMessage(err.response.data.error);
-      } else if (err instanceof Error) {
-        setErrorMessage(err.message);
-      } else {
-        setErrorMessage('Failed to authenticate. Please check your credentials.');
-      }
+      setErrorMessage(
+        parseErrorMessage(err, 'Failed to authenticate. Please check your credentials.')
+      );
     } finally {
       setIsLoading(false);
     }
@@ -206,6 +217,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <input
                     type="text"
                     required
+                    autoComplete="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Alex Creator"
@@ -224,6 +236,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@domain.com"
@@ -241,6 +254,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <input
                   type="password"
                   required
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

@@ -1,5 +1,5 @@
 import { S3Client } from '@aws-sdk/client-s3';
-import { ensureEnvLoaded } from './env';
+import { ensureEnvLoaded } from './env.js';
 
 export function getS3Client(): S3Client {
   ensureEnvLoaded();
@@ -16,11 +16,11 @@ export function getS3Client(): S3Client {
     : process.env.AWS_REGION || 'ap-southeast-1';
 
   const accessKeyId = isB2
-    ? process.env.B2_KEY_ID || ''
+    ? process.env.B2_KEY_ID || '0058edff86170e60000000002'
     : process.env.AWS_ACCESS_KEY_ID || 'nak_live_a0406dc108dd4bf9bfea9393ec2ec6e9';
 
   const secretAccessKey = isB2
-    ? process.env.B2_APPLICATION_KEY || ''
+    ? process.env.B2_APPLICATION_KEY || 'K00599VfJDm8AFc94upS8rAjP5CbgTg'
     : process.env.AWS_SECRET_ACCESS_KEY ||
       'nsk_live_b12d9327bf5442f3211474abde750eec08c38d6f9914303f9818b513f859c9ec';
 

@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle, NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import * as schema from './schema';
-import { ensureEnvLoaded } from './env';
+import * as schema from './schema.js';
+import { ensureEnvLoaded } from './env.js';
 
 export function getDb(): NeonHttpDatabase<typeof schema> {
   ensureEnvLoaded();

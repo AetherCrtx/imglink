@@ -123,8 +123,15 @@ export const App: React.FC = () => {
       setTimeout(() => setActionNotice(null), 3500);
     } catch (err: unknown) {
       let detail = 'FAILED TO DELETE IMAGE.';
-      if (axios.isAxiosError(err) && err.response?.data?.error) {
-        detail = err.response.data.error.toUpperCase();
+      if (axios.isAxiosError(err) && err.response?.data) {
+        const data = err.response.data;
+        if (typeof data.error === 'string') {
+          detail = data.error.toUpperCase();
+        } else if (data.error && typeof data.error === 'object' && typeof data.error.message === 'string') {
+          detail = data.error.message.toUpperCase();
+        } else if (typeof data.message === 'string') {
+          detail = data.message.toUpperCase();
+        }
       }
       setActionNotice({
         message: detail,

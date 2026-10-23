@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
-import { s3Client, BUCKET_NAME, STORAGE_PROVIDER_NAME } from './_lib/s3';
-import { getAuthUserAsync } from './_lib/auth';
+import { s3Client, BUCKET_NAME, STORAGE_PROVIDER_NAME } from './_lib/s3.js';
+import { getAuthUserAsync } from './_lib/auth.js';
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',

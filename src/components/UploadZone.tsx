@@ -167,11 +167,24 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           if (err.response?.status === 401) {
             detailMessage = 'SESSION EXPIRED OR UNAUTHORIZED. PLEASE SIGN IN.';
             onOpenAuth('login');
-          } else if (err.response?.data?.error) {
-            detailMessage = err.response.data.error;
-          } else if (err.message.includes('Network Error')) {
+          } else if (err.response?.data) {
+            const data = err.response.data;
+            if (typeof data === 'string') {
+              detailMessage = data;
+            } else if (typeof data.error === 'string') {
+              detailMessage = data.error;
+            } else if (data.error && typeof data.error === 'object' && typeof data.error.message === 'string') {
+              detailMessage = data.error.message;
+            } else if (typeof data.message === 'string') {
+              detailMessage = data.message;
+            } else if (typeof data.details === 'string') {
+              detailMessage = data.details;
+            } else {
+              detailMessage = err.message || 'UPLOAD FAILED';
+            }
+          } else if (err.message && err.message.includes('Network Error')) {
             detailMessage = 'NETWORK ERROR CONNECTING TO STORAGE BUCKET.';
-          } else {
+          } else if (err.message) {
             detailMessage = err.message;
           }
         } else if (err instanceof Error) {

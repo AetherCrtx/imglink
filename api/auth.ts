@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuthUserAsync, NEON_AUTH_BASE_URL, createToken } from './_lib/auth';
+import { getAuthUserAsync, NEON_AUTH_BASE_URL, createToken } from './_lib/auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS Headers
@@ -21,9 +21,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (action === 'google') {
     try {
       const origin =
-        process.env.APP_URL ||
         req.headers.origin ||
-        (req.headers.referer ? new URL(req.headers.referer as string).origin : 'https://imglink.web.id');
+        (req.headers.referer ? new URL(req.headers.referer as string).origin : null) ||
+        process.env.APP_URL ||
+        'https://imglink.web.id';
 
       const neonAuthRes = await fetch(`${NEON_AUTH_BASE_URL}/sign-in/social`, {
         method: 'POST',
@@ -41,7 +42,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (data.url) {
         return res.status(200).json({ url: data.url });
       }
-      return res.status(neonAuthRes.status).json(data);
+      const errMsg = typeof data.error === 'string' ? data.error : data.message || data.error?.message || 'Google OAuth failed';
+      return res.status(neonAuthRes.status || 400).json({ error: errMsg });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Google OAuth initialization failed';
       console.error('[auth google error]:', err);
@@ -89,7 +91,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const { email, password, name } = req.body || {};
       const origin =
-        process.env.APP_URL || req.headers.origin || 'https://imglink.web.id';
+        req.headers.origin ||
+        (req.headers.referer ? new URL(req.headers.referer as string).origin : null) ||
+        process.env.APP_URL ||
+        'https://imglink.web.id';
 
       const neonRes = await fetch(`${NEON_AUTH_BASE_URL}/sign-up/email`, {
         method: 'POST',
@@ -106,8 +111,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const data = await neonRes.json();
       if (!neonRes.ok) {
+        const errMsg =
+          typeof data.error === 'string'
+            ? data.error
+            : data.message || data.error?.message || 'Registration failed. Email may already be registered.';
         return res.status(neonRes.status).json({
-          error: data.message || 'Registration failed. Email may already be registered.',
+          error: errMsg,
         });
       }
 
@@ -135,7 +144,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const { email, password } = req.body || {};
       const origin =
-        process.env.APP_URL || req.headers.origin || 'https://imglink.web.id';
+        req.headers.origin ||
+        (req.headers.referer ? new URL(req.headers.referer as string).origin : null) ||
+        process.env.APP_URL ||
+        'https://imglink.web.id';
 
       const neonRes = await fetch(`${NEON_AUTH_BASE_URL}/sign-in/email`, {
         method: 'POST',
@@ -151,8 +163,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const data = await neonRes.json();
       if (!neonRes.ok) {
+        const errMsg =
+          typeof data.error === 'string'
+            ? data.error
+            : data.message || data.error?.message || 'Invalid email or password.';
         return res.status(neonRes.status).json({
-          error: data.message || 'Invalid email or password.',
+          error: errMsg,
         });
       }
 

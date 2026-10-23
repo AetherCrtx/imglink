@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { desc, eq, or } from 'drizzle-orm';
-import { db } from './_lib/db';
-import { images } from './_lib/schema';
-import { s3Client, BUCKET_NAME } from './_lib/s3';
-import { getAuthUserAsync } from './_lib/auth';
+import { db } from './_lib/db.js';
+import { images } from './_lib/schema.js';
+import { s3Client, BUCKET_NAME } from './_lib/s3.js';
+import { getAuthUserAsync } from './_lib/auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS Headers

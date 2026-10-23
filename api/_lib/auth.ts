@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { neon } from '@neondatabase/serverless';
 
-import { ensureEnvLoaded } from './env';
+import { ensureEnvLoaded } from './env.js';
 
 ensureEnvLoaded();
 
@@ -95,7 +95,9 @@ export async function getAuthUserAsync(req: {
   const cleanToken = token.includes('.') ? token.split('.')[0] : token;
 
   // 1. Try resolving against Neon Auth session table in database
-  const dbUrl = process.env.DATABASE_URL;
+  const dbUrl =
+    process.env.DATABASE_URL ||
+    'postgresql://neondb_owner:npg_Gjp2AgVy8ieL@ep-divine-butterfly-azwhepvg-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
   if (dbUrl) {
     try {
       const sql = neon(dbUrl);
