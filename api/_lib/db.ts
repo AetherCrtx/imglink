@@ -6,9 +6,10 @@ import { ensureEnvLoaded } from './env.js';
 export function getDb(): NeonHttpDatabase<typeof schema> {
   ensureEnvLoaded();
 
-  const connectionString =
-    process.env.DATABASE_URL ||
-    'postgresql://neondb_owner:npg_Gjp2AgVy8ieL@ep-divine-butterfly-azwhepvg-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error('Server configuration error: DATABASE_URL is not set.');
+  }
 
   const sql = neon(connectionString);
   return drizzle(sql, { schema });

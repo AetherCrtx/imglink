@@ -5,15 +5,25 @@ import { ensureEnvLoaded } from './env.js';
 
 ensureEnvLoaded();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'imglink-secret-key-neon-2026';
-export const NEON_AUTH_BASE_URL =
-  process.env.NEON_AUTH_BASE_URL ||
-  'https://ep-divine-butterfly-azwhepvg.neonauth.c-3.ap-southeast-1.aws.neon.tech/neondb/auth';
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Server configuration error: JWT_SECRET environment variable is missing.');
+    }
+    return 'imglink-dev-ephemeral-jwt-secret';
+  }
+  return secret;
+}
 
-export const ADMIN_EMAILS = new Set([
-  'rashqaandrean@gmail.com',
-  'finn9aming@gmail.com',
-]);
+export const NEON_AUTH_BASE_URL = process.env.NEON_AUTH_BASE_URL || '';
+
+export const ADMIN_EMAILS = new Set(
+  (process.env.ADMIN_EMAILS || 'rashqaandrean@gmail.com,finn9aming@gmail.com')
+    .split(',')
+    .map((e) => e.toLowerCase().trim())
+    .filter(Boolean)
+);
 
 export function isRootAdmin(email: string): boolean {
   return ADMIN_EMAILS.has(email.toLowerCase().trim());
@@ -52,7 +62,7 @@ export function createToken(user: AuthUser, expiresInDays = 7): string {
   ).toString('base64url');
 
   const signature = crypto
-    .createHmac('sha256', JWT_SECRET)
+    .createHmac('sha256', getJwtSecret())
     .update(`${header}.${payload}`)
     .digest('base64url');
 
@@ -66,7 +76,7 @@ export function verifyLocalToken(token: string): AuthUser | null {
 
     const [header, payload, signature] = parts;
     const expectedSignature = crypto
-      .createHmac('sha256', JWT_SECRET)
+      .createHmac('sha256', getJwtSecret())
       .update(`${header}.${payload}`)
       .digest('base64url');
 
@@ -182,12 +192,9 @@ export async function getAuthUserAsync(req: {
     }
   }
 
-  const dbUrl =
-    process.env.DATABASE_URL ||
-    'postgresql://neondb_owner:npg_Gjp2AgVy8ieL@ep-divine-butterfly-azwhepvg-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+  const dbUrl = process.env.DATABASE_URL;
 
-  if (!token) {
-    // If no token, check if there's any active session matching IP/User-Agent from Neon Auth
+  if (!token || !dbUrl) {
     return null;
   }
 

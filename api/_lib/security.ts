@@ -161,22 +161,33 @@ export function timingSafeEqual(a: string, b: string): boolean {
   }
 }
 
-const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  process.env.SESSION_SECRET ||
-  'imglink-prod-super-secure-jwt-hmac-sha256-key-9912';
-
-const ADMIN_SECRET_PIN =
-  process.env.ADMIN_SECRET_KEY ||
-  process.env.ADMIN_SECRET_PIN ||
-  '020709';
+function getAdminJwtSecret(): string {
+  const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'Server configuration error: JWT_SECRET environment variable is missing.'
+      );
+    }
+    return 'imglink-dev-ephemeral-jwt-secret';
+  }
+  return secret;
+}
 
 /**
  * Verify administrative clearance key using timing-safe comparison on the server
  */
 export function verifyAdminSecret(providedKey: string): boolean {
   if (!providedKey || typeof providedKey !== 'string') return false;
-  return timingSafeEqual(providedKey.trim(), ADMIN_SECRET_PIN);
+  const adminSecret =
+    process.env.ADMIN_SECRET_KEY || process.env.ADMIN_SECRET_PIN;
+  if (!adminSecret) {
+    console.error(
+      '[SECURITY]: ADMIN_SECRET_KEY or ADMIN_SECRET_PIN environment variable is not configured.'
+    );
+    return false;
+  }
+  return timingSafeEqual(providedKey.trim(), adminSecret.trim());
 }
 
 /**
@@ -196,7 +207,7 @@ export function createAdminToken(): string {
   ).toString('base64url');
 
   const signature = crypto
-    .createHmac('sha256', JWT_SECRET)
+    .createHmac('sha256', getAdminJwtSecret())
     .update(`${header}.${payload}`)
     .digest('base64url');
 
@@ -214,7 +225,7 @@ export function verifyAdminToken(token: string): boolean {
 
     const [header, payload, signature] = parts;
     const expected = crypto
-      .createHmac('sha256', JWT_SECRET)
+      .createHmac('sha256', getAdminJwtSecret())
       .update(`${header}.${payload}`)
       .digest('base64url');
 

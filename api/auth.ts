@@ -48,9 +48,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       retryAfterSeconds: rateLimit.retryAfterSeconds,
     });
   }
-  const dbUrl =
-    process.env.DATABASE_URL ||
-    'postgresql://neondb_owner:npg_Gjp2AgVy8ieL@ep-divine-butterfly-azwhepvg-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    return res.status(500).json({ error: 'Server configuration error: DATABASE_URL is not set.' });
+  }
   const sql = neon(dbUrl);
 
   const getCleanOrigin = () => {
