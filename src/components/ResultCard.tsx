@@ -8,13 +8,22 @@ import {
   Globe,
   Code2,
   Sparkles,
+  RefreshCw,
+  Download,
+  Loader2,
 } from 'lucide-react';
-import type { ImageRecord } from '../types';
+import type { ImageRecord, SupportedOutputFormat } from '../types';
 import { formatBytes, getPublicViewUrl } from '../utils/formatters';
+import {
+  DEFAULT_CONVERSION_SETTINGS,
+  OUTPUT_FORMATS,
+  convertImageFile,
+} from '../utils/imageConverter';
 
 interface ResultCardProps {
   image: ImageRecord;
   onUploadAnother: () => void;
+  onOpenInConverter?: (file: File) => void;
 }
 
 type SnippetType = 'direct' | 'markdown' | 'html';
@@ -22,10 +31,13 @@ type SnippetType = 'direct' | 'markdown' | 'html';
 export const ResultCard: React.FC<ResultCardProps> = ({
   image,
   onUploadAnother,
+  onOpenInConverter,
 }) => {
   const [copiedType, setCopiedType] = useState<SnippetType | null>(null);
   const [activeTab, setActiveTab] = useState<SnippetType>('direct');
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [convertingFormat, setConvertingFormat] = useState<SupportedOutputFormat | null>(null);
+  const [openingStudio, setOpeningStudio] = useState(false);
 
   const publicUrl = getPublicViewUrl(image.fileKey);
 
@@ -59,6 +71,50 @@ export const ResultCard: React.FC<ResultCardProps> = ({
     }
   };
 
+  const fetchImageAsFile = async (): Promise<File> => {
+    const response = await fetch(publicUrl);
+    const blob = await response.blob();
+    return new File([blob], image.originalName || image.fileKey, {
+      type: image.mimeType || blob.type || 'image/png',
+    });
+  };
+
+  const handleQuickConvertDownload = async (format: SupportedOutputFormat) => {
+    try {
+      setConvertingFormat(format);
+      const sourceFile = await fetchImageAsFile();
+      const converted = await convertImageFile(sourceFile, {
+        ...DEFAULT_CONVERSION_SETTINGS,
+        targetFormat: format,
+      });
+
+      const a = document.createElement('a');
+      a.href = converted.url;
+      a.download = converted.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(converted.url), 3000);
+    } catch (err) {
+      console.error('Quick format download failed:', err);
+    } finally {
+      setConvertingFormat(null);
+    }
+  };
+
+  const handleOpenStudio = async () => {
+    if (!onOpenInConverter) return;
+    try {
+      setOpeningStudio(true);
+      const sourceFile = await fetchImageAsFile();
+      onOpenInConverter(sourceFile);
+    } catch (err) {
+      console.error('Failed to load image into Converter Studio:', err);
+    } finally {
+      setOpeningStudio(false);
+    }
+  };
+
   return (
     <div className="w-full bg-white border-[4px] border-black shadow-brutal-xl overflow-hidden animate-fadeIn">
       {/* Neo-brutalist Window Header */}
@@ -69,18 +125,37 @@ export const ResultCard: React.FC<ResultCardProps> = ({
           <span className="w-3.5 h-3.5 bg-neo-cyan border-2 border-black rounded-full inline-block" />
           <span className="font-mono font-black text-xs uppercase tracking-wider text-black ml-1 flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 fill-black" />
-            <span className="hidden sm:inline">STATUS: 200 OK // IMAGE_DEPLOYED</span>
-            <span className="sm:hidden">200 OK</span>
+            <span className="hidden sm:inline">CLOUD ASSET DEPLOYED · READY TO SHARE</span>
+            <span className="sm:hidden">READY TO SHARE</span>
           </span>
         </div>
 
-        <button
-          onClick={onUploadAnother}
-          className="min-h-[38px] px-3 py-1.5 bg-neo-yellow hover:bg-neo-pink border-2 border-black font-black uppercase text-xs text-black shadow-brutal-sm transition-all flex items-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 flex-shrink-0"
-        >
-          <PlusCircle className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span><span className="hidden xs:inline">Upload </span>Another</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenInConverter && (
+            <button
+              onClick={handleOpenStudio}
+              disabled={openingStudio}
+              className="min-h-[38px] px-3 py-1.5 bg-neo-cyan hover:bg-white border-2 border-black font-mono font-black uppercase text-xs text-black shadow-brutal-sm transition-all flex items-center gap-1.5"
+            >
+              {openingStudio ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin stroke-[2.5]" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5 stroke-[2.5]" />
+              )}
+              <span>Edit / Convert</span>
+            </button>
+          )}
+
+          <button
+            onClick={onUploadAnother}
+            className="min-h-[38px] px-3 py-1.5 bg-neo-yellow hover:bg-neo-pink border-2 border-black font-black uppercase text-xs text-black shadow-brutal-sm transition-all flex items-center gap-1.5 active:translate-x-0.5 active:translate-y-0.5 flex-shrink-0"
+          >
+            <PlusCircle className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>
+              <span className="hidden xs:inline">Upload </span>Another
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Main Content Area */}
@@ -114,15 +189,40 @@ export const ResultCard: React.FC<ResultCardProps> = ({
           </div>
 
           {/* Details Bar */}
-          <div className="p-3 bg-neo-cyan/10 border-2 border-black shadow-brutal-sm flex items-center justify-between font-mono text-xs">
+          <div className="p-3 bg-neo-cyan/10 border-2 border-black shadow-brutal-sm flex items-center justify-between font-mono text-xs tabular-nums">
             <span className="font-black text-black truncate max-w-[140px] sm:max-w-[200px]">
               {image.originalName}
             </span>
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 bg-neo-yellow border border-black font-black uppercase text-[10px] text-black">
-                {image.mimeType.replace('image/', '')}
+                {image.mimeType.replace('image/', '').replace('+xml', '')}
               </span>
               <span className="font-bold text-black">{formatBytes(image.sizeBytes)}</span>
+            </div>
+          </div>
+
+          {/* 1-Click Format Convert & Download Strip */}
+          <div className="p-3 bg-neo-bg border-2 border-black space-y-2">
+            <span className="font-mono font-black text-[11px] uppercase text-black flex items-center gap-1.5">
+              <Download className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Instant Convert & Download As:</span>
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {OUTPUT_FORMATS.map((fmt) => (
+                <button
+                  key={fmt.id}
+                  type="button"
+                  onClick={() => handleQuickConvertDownload(fmt.id)}
+                  disabled={convertingFormat !== null}
+                  className="px-2 py-1 bg-white hover:bg-neo-yellow border border-black font-mono font-black text-[10px] uppercase text-black shadow-brutal-sm flex items-center gap-1 transition-all"
+                >
+                  {convertingFormat === fmt.id ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    `.${fmt.extension}`
+                  )}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -175,7 +275,9 @@ export const ResultCard: React.FC<ResultCardProps> = ({
                 <button
                   onClick={() => handleCopy(activeTab, snippets[activeTab].value)}
                   className={`w-full sm:w-auto min-h-[46px] px-6 py-3 border-[3px] border-black font-black uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 active:translate-x-0.5 active:translate-y-0.5 shadow-brutal hover:shadow-brutal-lg flex-shrink-0 ${
-                    copiedType === activeTab ? 'bg-neo-lime text-black' : 'bg-neo-yellow hover:bg-neo-cyan text-black'
+                    copiedType === activeTab
+                      ? 'bg-neo-lime text-black'
+                      : 'bg-neo-yellow hover:bg-neo-cyan text-black'
                   }`}
                 >
                   {copiedType === activeTab ? (
@@ -205,7 +307,9 @@ export const ResultCard: React.FC<ResultCardProps> = ({
                       className="p-2.5 sm:p-3 bg-white border-2 border-black shadow-brutal-sm flex items-center justify-between gap-2 sm:gap-3"
                     >
                       <div className="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
-                        <span className="p-1 bg-neo-bg border border-black flex-shrink-0">{item.icon}</span>
+                        <span className="p-1 bg-neo-bg border border-black flex-shrink-0">
+                          {item.icon}
+                        </span>
                         <span className="font-mono font-bold text-xs uppercase text-black flex-shrink-0">
                           {item.label}:
                         </span>

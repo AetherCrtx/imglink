@@ -5,6 +5,7 @@ import { Footer } from './components/Footer';
 import { UploadZone } from './components/UploadZone';
 import { ResultCard } from './components/ResultCard';
 import { RecentUploads } from './components/RecentUploads';
+import { ImageConverterStudio } from './components/ImageConverterStudio';
 import { AuthModal } from './components/AuthModal';
 import { ProUpgradeModal } from './components/ProUpgradeModal';
 import { LegalAgreementModal } from './components/LegalAgreementModal';
@@ -12,7 +13,16 @@ import { SecretAdminGate } from './components/SecretAdminGate';
 import type { ImageRecord, AuthUser } from './types';
 import { initializeAuth, clearAuthSession, setAuthSession } from './utils/auth';
 import { computeSha256, ADMIN_GATE_FINGERPRINT } from './utils/security';
-import { Sparkles, ArrowDown, ShieldCheck, Zap } from 'lucide-react';
+import {
+  Sparkles,
+  ArrowDown,
+  ShieldCheck,
+  Zap,
+  UploadCloud,
+  RefreshCw,
+} from 'lucide-react';
+
+export type WorkspaceMode = 'cloud-upload' | 'converter-studio';
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -21,11 +31,17 @@ export const App: React.FC = () => {
   const [isLegalModalOpen, setIsLegalModalOpen] = useState<boolean>(false);
   const [isSecretRouteActive, setIsSecretRouteActive] = useState<boolean>(false);
 
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('cloud-upload');
+  const [converterInitialFile, setConverterInitialFile] = useState<File | null>(null);
+
   const [images, setImages] = useState<ImageRecord[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState<boolean>(true);
   const [activeResult, setActiveResult] = useState<ImageRecord | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [actionNotice, setActionNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [actionNotice, setActionNotice] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
 
   // Initialize Auth & Handle OAuth Redirects
   useEffect(() => {
@@ -193,6 +209,7 @@ export const App: React.FC = () => {
   };
 
   const handleUploadSuccess = (newImage: ImageRecord) => {
+    setWorkspaceMode('cloud-upload');
     setActiveResult(newImage);
     setImages((prev) => [newImage, ...prev.filter((img) => img.id !== newImage.id)]);
     setUser((prev) => (prev ? { ...prev, imageCount: (prev.imageCount ?? 0) + 1 } : null));
@@ -202,6 +219,14 @@ export const App: React.FC = () => {
       type: 'success',
     });
     setTimeout(() => setActionNotice(null), 4000);
+  };
+
+  const handleOpenInConverter = (file?: File) => {
+    if (file) {
+      setConverterInitialFile(file);
+    }
+    setWorkspaceMode('converter-studio');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteImage = async (id: string, fileKey: string) => {
@@ -229,7 +254,11 @@ export const App: React.FC = () => {
         const data = err.response.data;
         if (typeof data.error === 'string') {
           detail = data.error.toUpperCase();
-        } else if (data.error && typeof data.error === 'object' && typeof data.error.message === 'string') {
+        } else if (
+          data.error &&
+          typeof data.error === 'object' &&
+          typeof data.error.message === 'string'
+        ) {
           detail = data.error.message.toUpperCase();
         } else if (typeof data.message === 'string') {
           detail = data.message.toUpperCase();
@@ -258,39 +287,35 @@ export const App: React.FC = () => {
           {[1, 2].map((k) => (
             <div key={k} className="flex items-center space-x-6">
               <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-pink text-black border-2 border-black shadow-brutal-sm rotate-1">
-                PRIVATE AND SECURE HOSTING
+                UNIVERSAL IMAGE CONVERTER
               </span>
-              <span className="font-bold">//</span>
+              <span className="font-bold">·</span>
               <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-cyan text-black border-2 border-black shadow-brutal-sm -rotate-1">
-                GOOGLE VERIFIED IDENTITY
+                PNG · JPG · JFIF · WEBP · AVIF · GIF · SVG · BMP · ICO
               </span>
-              <span className="font-bold">//</span>
+              <span className="font-bold">·</span>
               <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-lime text-black border-2 border-black shadow-brutal-sm rotate-2">
-                DIRECT HIGH SPEED STREAMING
+                DIRECT HIGH SPEED CLOUD HOSTING
               </span>
-              <span className="font-bold">//</span>
+              <span className="font-bold">·</span>
               <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-purple text-white border-2 border-black shadow-brutal-sm -rotate-1">
-                10MB MAX PIPELINE
+                EXIF & GPS PRIVACY STRIPPER
               </span>
-              <span className="font-bold">//</span>
+              <span className="font-bold">·</span>
               <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-orange text-black border-2 border-black shadow-brutal-sm rotate-1">
                 SHORT AND EMBED URLS
               </span>
-              <span className="font-bold">//</span>
+              <span className="font-bold">·</span>
               <span className="inline-flex items-center px-2.5 py-0.5 bg-white text-black border-2 border-black shadow-brutal-sm -rotate-2">
-                CLIPBOARD PASTE SUPPORT
+                BATCH ZIP DOWNLOADS
               </span>
-              <span className="font-bold">//</span>
-              <span className="inline-flex items-center px-2.5 py-0.5 bg-neo-lime text-black border-2 border-black shadow-brutal-sm rotate-1">
-                UNLIMITED PRO TIER
-              </span>
-              <span className="font-bold">//</span>
+              <span className="font-bold">·</span>
             </div>
           ))}
         </div>
       </div>
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12 space-y-8 sm:space-y-12">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 space-y-8 sm:space-y-10">
         {/* Floating Neo-Brutalist Toast */}
         {actionNotice && (
           <div
@@ -304,49 +329,108 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Hero Section (Neo-Brutalism) */}
-        <section className="text-center space-y-4 sm:space-y-5 pt-1 sm:pt-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-1.5 bg-neo-cyan border-[3px] border-black font-mono font-black text-[10px] sm:text-xs uppercase text-black shadow-brutal-sm sm:shadow-brutal -rotate-1 hover:rotate-1 transition-transform">
+        {/* Hero Section */}
+        <section className="text-center space-y-4 sm:space-y-5 pt-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-1.5 bg-neo-cyan border-[3px] border-black font-mono font-black text-[10px] sm:text-xs uppercase text-black shadow-brutal-sm sm:shadow-brutal -rotate-1">
             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-black" />
-            <span>FAST DIRECT CLOUD HOSTING // ZERO BOTTLENECK</span>
+            <span>CLOUD IMAGE-TO-URL & UNIVERSAL FORMAT CONVERTER</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight text-black leading-tight sm:leading-none max-w-4xl mx-auto px-1">
-            Convert Any Image into a{' '}
-            <span className="bg-neo-yellow px-2 py-0.5 border-[3px] border-black inline-block shadow-brutal-sm sm:shadow-brutal my-1 -rotate-1">
-              Shareable URL
-            </span>{' '}
-            <span className="bg-neo-pink px-2 py-0.5 border-[3px] border-black inline-block shadow-brutal-sm sm:shadow-brutal my-1 rotate-1">
-              Instantly.
-            </span>
+            {workspaceMode === 'cloud-upload' ? (
+              <>
+                Convert Any Image into a{' '}
+                <span className="bg-neo-yellow px-2 py-0.5 border-[3px] border-black inline-block shadow-brutal-sm sm:shadow-brutal my-1 -rotate-1">
+                  Shareable URL
+                </span>{' '}
+                <span className="bg-neo-pink px-2 py-0.5 border-[3px] border-black inline-block shadow-brutal-sm sm:shadow-brutal my-1 rotate-1">
+                  Instantly.
+                </span>
+              </>
+            ) : (
+              <>
+                Convert & Optimize{' '}
+                <span className="bg-neo-cyan px-2 py-0.5 border-[3px] border-black inline-block shadow-brutal-sm sm:shadow-brutal my-1 -rotate-1">
+                  Any Image Format
+                </span>{' '}
+                <span className="bg-neo-lime px-2 py-0.5 border-[3px] border-black inline-block shadow-brutal-sm sm:shadow-brutal my-1 rotate-1">
+                  In Browser.
+                </span>
+              </>
+            )}
           </h1>
 
-          <p className="font-mono text-xs sm:text-sm font-bold text-black/80 max-w-xl mx-auto leading-relaxed px-2">
-            Ultra-fast direct image hosting. Instant short URLs, Markdown and HTML embed snippets, clipboard paste support, and your private image gallery.
+          <p className="font-mono text-xs sm:text-sm font-bold text-black/80 max-w-2xl mx-auto leading-relaxed px-2">
+            {workspaceMode === 'cloud-upload'
+              ? 'Ultra-fast direct cloud hosting with optional pre-upload format conversion, instant short URLs, Markdown & HTML embed snippets, and your private gallery.'
+              : 'Convert between PNG, JPG, JFIF, WEBP, AVIF, GIF, SVG, BMP, ICO, and TIFF with real-time compression, resize, crop/rotate, color filters, and EXIF privacy stripping.'}
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-1 sm:pt-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 bg-neo-lime border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
-              <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-black" />
-              10MB MAX PER FILE
+          {/* Primary Workspace Mode Switcher */}
+          <div className="pt-2 flex justify-center w-full px-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 bg-white border-[3px] border-black shadow-brutal w-full max-w-xl">
+              <button
+                type="button"
+                onClick={() => setWorkspaceMode('cloud-upload')}
+                className={`min-h-[46px] min-w-0 overflow-hidden px-4 py-2.5 font-mono font-black text-xs sm:text-sm uppercase flex items-center justify-center gap-2 border-2 transition-all ${
+                  workspaceMode === 'cloud-upload'
+                    ? 'bg-neo-yellow border-black text-black shadow-brutal-sm'
+                    : 'bg-transparent border-transparent text-black/75 hover:bg-neo-bg'
+                }`}
+              >
+                <UploadCloud className="w-4 h-4 stroke-[2.5] flex-shrink-0" />
+                <span className="truncate">Cloud Image-to-URL</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setWorkspaceMode('converter-studio')}
+                className={`min-h-[46px] min-w-0 overflow-hidden px-4 py-2.5 font-mono font-black text-xs sm:text-sm uppercase flex items-center justify-center gap-2 border-2 transition-all ${
+                  workspaceMode === 'converter-studio'
+                    ? 'bg-neo-cyan border-black text-black shadow-brutal-sm'
+                    : 'bg-transparent border-transparent text-black/75 hover:bg-neo-bg'
+                }`}
+              >
+                <RefreshCw className="w-4 h-4 stroke-[2.5] flex-shrink-0" />
+                <span className="truncate">Converter Studio</span>
+                <span className="px-1.5 py-0.5 bg-neo-lime border border-black text-[10px] font-black flex-shrink-0">
+                  FREE
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-1">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 bg-neo-lime border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm -rotate-1">
+              <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-black" />9 FORMATS SUPPORTED
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 bg-neo-cyan border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm rotate-1 hover:scale-105 transition-transform">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 bg-neo-cyan border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm rotate-1">
               <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5]" />
-              SECURE PRIVATE HOSTING
+              EXIF PRIVACY SCRUBBER
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 bg-neo-purple border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-white shadow-brutal-sm -rotate-1 hover:scale-105 transition-transform">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 bg-neo-purple border-2 border-black font-mono font-black text-[11px] sm:text-xs uppercase text-white shadow-brutal-sm -rotate-1">
               <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-white" />
               INSTANT EMBED CODES
             </span>
           </div>
         </section>
 
-        {/* Upload & Result Stage */}
+        {/* Active Workspace Stage */}
         <section className="space-y-6">
-          {activeResult ? (
+          {workspaceMode === 'converter-studio' ? (
+            <ImageConverterStudio
+              user={user}
+              onOpenAuth={handleOpenAuth}
+              onOpenProModal={() => setIsProModalOpen(true)}
+              onUploadConvertedSuccess={handleUploadSuccess}
+              initialFile={converterInitialFile}
+              onClearInitialFile={() => setConverterInitialFile(null)}
+            />
+          ) : activeResult ? (
             <ResultCard
               image={activeResult}
               onUploadAnother={() => setActiveResult(null)}
+              onOpenInConverter={(file) => handleOpenInConverter(file)}
             />
           ) : (
             <UploadZone
@@ -356,6 +440,7 @@ export const App: React.FC = () => {
               onUploadSuccess={handleUploadSuccess}
               isUploading={isUploading}
               setIsUploading={setIsUploading}
+              onSwitchToConverter={(file) => handleOpenInConverter(file)}
             />
           )}
         </section>
@@ -363,7 +448,7 @@ export const App: React.FC = () => {
         {/* Divider with Neo-brutalist Tag */}
         <div className="relative py-3 sm:py-4 flex items-center justify-center">
           <div className="w-full border-t-[3px] border-black" />
-          <div className="absolute px-3.5 py-1 sm:px-5 sm:py-1.5 bg-neo-pink border-[3px] border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm sm:shadow-brutal flex items-center gap-2 -rotate-1 hover:rotate-1 transition-transform">
+          <div className="absolute px-3.5 py-1 sm:px-5 sm:py-1.5 bg-neo-pink border-[3px] border-black font-mono font-black text-[11px] sm:text-xs uppercase text-black shadow-brutal-sm sm:shadow-brutal flex items-center gap-2 -rotate-1">
             <ArrowDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
             <span>PRIVATE ASSET VAULT</span>
           </div>
@@ -378,6 +463,12 @@ export const App: React.FC = () => {
             onDelete={handleDeleteImage}
             user={user}
             onOpenAuth={handleOpenAuth}
+            onOpenInConverter={(file) => handleOpenInConverter(file)}
+            onSelectImage={(img) => {
+              setActiveResult(img);
+              setWorkspaceMode('cloud-upload');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
           />
         </section>
       </main>

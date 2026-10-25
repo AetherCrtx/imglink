@@ -13,17 +13,52 @@ import {
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
+  'image/jpg',
+  'image/pjpeg',
+  'image/jfif',
   'image/png',
   'image/webp',
   'image/gif',
+  'image/svg+xml',
+  'image/avif',
+  'image/bmp',
+  'image/x-ms-bmp',
+  'image/x-icon',
+  'image/vnd.microsoft.icon',
+  'image/tiff',
 ]);
 
 const MIME_EXTENSION_MAP: Record<string, string> = {
   'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/pjpeg': 'jpg',
+  'image/jfif': 'jfif',
   'image/png': 'png',
   'image/webp': 'webp',
   'image/gif': 'gif',
+  'image/svg+xml': 'svg',
+  'image/avif': 'avif',
+  'image/bmp': 'bmp',
+  'image/x-ms-bmp': 'bmp',
+  'image/x-icon': 'ico',
+  'image/vnd.microsoft.icon': 'ico',
+  'image/tiff': 'tiff',
 };
+
+const ALLOWED_EXTENSIONS = new Set([
+  'jpg',
+  'jpeg',
+  'jfif',
+  'png',
+  'webp',
+  'gif',
+  'svg',
+  'avif',
+  'bmp',
+  'ico',
+  'tiff',
+  'tif',
+]);
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -113,7 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const originalExt = fileName.split('.').pop()?.toLowerCase() || '';
     const safeExt =
-      originalExt && ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(originalExt)
+      originalExt && ALLOWED_EXTENSIONS.has(originalExt)
         ? originalExt
         : MIME_EXTENSION_MAP[mimeType] || 'bin';
 
