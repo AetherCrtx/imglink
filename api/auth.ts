@@ -18,19 +18,13 @@ import {
   createAdminToken,
   verifyAdminToken,
   applySecurityHeaders,
+  applyCorsHeaders,
 } from './_lib/security.js';
 
 ensureEnvLoaded();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS & Security Defensive Headers
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-Admin-Key, x-admin-key, X-Admin-Secret, x-admin-secret, X-Admin-Token, x-admin-token'
-  );
+  applyCorsHeaders(req, res);
   applySecurityHeaders(res);
 
   if (req.method === 'OPTIONS') {
@@ -126,46 +120,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ((req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()) ||
         req.socket?.remoteAddress;
 
-      let sessions: any[] = [];
-
-      // Priority 1: Match explicit token parameter if returned in query
-      if (queryToken) {
-        sessions = await sql`
-          SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
-          FROM neon_auth.session s
-          JOIN neon_auth.user u ON s."userId" = u.id
-          WHERE s.token = ${queryToken} AND s."expiresAt" > NOW()
-          LIMIT 1
-        `;
+      let cookieToken: string | null = null;
+      if (req.headers.cookie) {
+        for (const c of req.headers.cookie.split(';')) {
+          const [k, v] = c.trim().split('=');
+          if (
+            k === '__Secure-neon-auth.session_token' ||
+            k === 'neon-auth.session_token' ||
+            k === 'imglink_token'
+          ) {
+            cookieToken = decodeURIComponent(v);
+            break;
+          }
+        }
       }
 
-      // Priority 2: Match client IP address within recent session window
-      if ((!sessions || sessions.length === 0) && clientIp) {
-        sessions = await sql`
-          SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
-          FROM neon_auth.session s
-          JOIN neon_auth.user u ON s."userId" = u.id
-          WHERE s."ipAddress" = ${clientIp} AND s."expiresAt" > NOW() AND s."createdAt" > NOW() - INTERVAL '15 minutes'
-          ORDER BY s."createdAt" DESC
-          LIMIT 1
-        `;
+      const tokenToLookup = queryToken || cookieToken;
+
+      if (!tokenToLookup) {
+        console.warn('[oauth-callback]: No valid token or cookie presented');
+        return res.redirect(302, `${origin}/?login=error&reason=unauthorized`);
       }
 
-      // Priority 3: Fallback to most recently created active session
-      if (!sessions || sessions.length === 0) {
-        sessions = await sql`
-          SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
-          FROM neon_auth.session s
-          JOIN neon_auth.user u ON s."userId" = u.id
-          WHERE s."expiresAt" > NOW()
-          ORDER BY s."createdAt" DESC
-          LIMIT 1
-        `;
-      }
+      const cleanToken = tokenToLookup.includes('.') ? tokenToLookup.split('.')[0] : tokenToLookup;
+
+      const sessions = await sql`
+        SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
+        FROM neon_auth.session s
+        JOIN neon_auth.user u ON s."userId" = u.id
+        WHERE (s.token = ${tokenToLookup} OR s.token = ${cleanToken}) AND s."expiresAt" > NOW()
+        LIMIT 1
+      `;
 
       if (!sessions || sessions.length === 0) {
-        console.error('[oauth-callback]: No active session found in neon_auth');
-        return res.redirect(302, `${origin}/?login=error&reason=no_session`);
+        console.error('[oauth-callback]: Session expired or not found for given token');
+        return res.redirect(302, `${origin}/?login=error&reason=session_not_found`);
       }
 
       const session = sessions[0];
@@ -226,34 +215,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.warn('[neon-auth fetch get-session failed]:', neonFetchErr);
       }
 
-      // If Neon Auth HTTP endpoint rejected due to cross-site cookie blocking, resolve from database
+      // If Neon Auth HTTP endpoint rejected or unavailable, resolve strictly against database matching verifier token
       if (!userObj) {
-        const clientIp =
-          ((req.headers['x-forwarded-for'] as string)?.split(',')[0].trim()) ||
-          req.socket?.remoteAddress;
-
-        let sessions: any[] = [];
-        if (clientIp) {
-          sessions = await sql`
-            SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
-            FROM neon_auth.session s
-            JOIN neon_auth.user u ON s."userId" = u.id
-            WHERE s."ipAddress" = ${clientIp} AND s."expiresAt" > NOW() AND s."createdAt" > NOW() - INTERVAL '30 minutes'
-            ORDER BY s."createdAt" DESC
-            LIMIT 1
-          `;
-        }
-
-        if (!sessions || sessions.length === 0) {
-          sessions = await sql`
-            SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
-            FROM neon_auth.session s
-            JOIN neon_auth.user u ON s."userId" = u.id
-            WHERE s."expiresAt" > NOW()
-            ORDER BY s."createdAt" DESC
-            LIMIT 1
-          `;
-        }
+        const cleanVerifier = verifier.includes('.') ? verifier.split('.')[0] : verifier;
+        const sessions = await sql`
+          SELECT s.id, s.token, s."userId", s."createdAt", u.name, u.email, u.image
+          FROM neon_auth.session s
+          JOIN neon_auth.user u ON s."userId" = u.id
+          WHERE (s.token = ${verifier} OR s.token = ${cleanVerifier}) AND s."expiresAt" > NOW()
+          LIMIT 1
+        `;
 
         if (sessions && sessions.length > 0) {
           const s = sessions[0];
@@ -450,9 +421,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Missing targetUserId.' });
       }
 
-      const targetUserRows = await sql`SELECT email FROM public.users WHERE id::text = ${targetUserId}`;
+      const targetUserRows = await sql`SELECT email, role FROM public.users WHERE id::text = ${targetUserId}`;
       if (targetUserRows.length === 0) {
         return res.status(404).json({ error: 'Target user not found.' });
+      }
+
+      const targetEmail = String(targetUserRows[0].email || '').toLowerCase().trim();
+      if (isRootAdmin(targetEmail)) {
+        return res.status(403).json({ error: 'Cannot modify tier or status of root administrator account.' });
       }
 
       if (decision === 'approve') {

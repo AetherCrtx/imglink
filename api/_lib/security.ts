@@ -29,6 +29,13 @@ export function getClientIp(req: {
   headers: Record<string, string | string[] | undefined>;
   socket?: { remoteAddress?: string };
 }): string {
+  // Prioritize trusted reverse-proxy headers from Vercel edge
+  const vercelIp = req.headers['x-vercel-ip'];
+  if (typeof vercelIp === 'string' && vercelIp.trim()) return vercelIp.trim();
+
+  const realIp = req.headers['x-real-ip'];
+  if (typeof realIp === 'string' && realIp.trim()) return realIp.trim();
+
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string') {
     const clientIp = forwarded.split(',')[0].trim();
@@ -37,8 +44,7 @@ export function getClientIp(req: {
   if (Array.isArray(forwarded) && forwarded[0]) {
     return forwarded[0].trim();
   }
-  const realIp = req.headers['x-real-ip'];
-  if (typeof realIp === 'string') return realIp.trim();
+
   return req.socket?.remoteAddress || '127.0.0.1';
 }
 
@@ -287,4 +293,64 @@ export const ALLOWED_IMAGE_MIME_TYPES = new Set([
   'image/vnd.microsoft.icon',
   'image/tiff',
 ]);
+
+/**
+ * Validate that an S3 storage file key is safe, contains no path traversal sequences,
+ * and matches the UUID/alphanumeric naming convention.
+ */
+export function isValidFileKey(key: string): boolean {
+  if (!key || typeof key !== 'string') return false;
+  if (key.includes('..') || key.includes('/') || key.includes('\\')) return false;
+  return /^[a-zA-Z0-9_-]{1,64}\.[a-zA-Z0-9]{1,10}$/.test(key.trim());
+}
+
+/**
+ * Apply safe, whitelisted CORS headers.
+ * Prevents arbitrary origin reflection with credentials (CORS credential theft vulnerability).
+ */
+export function applyCorsHeaders(req: any, res: any): void {
+  const origin = req.headers?.origin;
+  const appUrl = (process.env.APP_URL || 'https://imglink.web.id').replace(/\/$/, '');
+
+  let allowedOrigin: string | null = null;
+
+  if (origin) {
+    try {
+      const parsedOrigin = new URL(origin);
+      const parsedApp = new URL(appUrl);
+
+      const isSameHost = parsedOrigin.host === parsedApp.host;
+      const isLocalhost =
+        parsedOrigin.hostname === 'localhost' ||
+        parsedOrigin.hostname === '127.0.0.1';
+      const isVercelPreview =
+        parsedOrigin.hostname.endsWith('.vercel.app') &&
+        (parsedApp.hostname.includes('imglink') || parsedOrigin.hostname.includes('imglink'));
+
+      if (isSameHost || isLocalhost || isVercelPreview) {
+        allowedOrigin = origin;
+      }
+    } catch {
+      allowedOrigin = null;
+    }
+  }
+
+  if (allowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  } else if (!origin) {
+    // Same-origin non-browser request (e.g. server-to-server or curl)
+    res.setHeader('Access-Control-Allow-Origin', appUrl);
+  }
+
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET,OPTIONS,PATCH,DELETE,POST,PUT'
+  );
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-Admin-Key, x-admin-key, X-Admin-Secret, x-admin-secret, X-Admin-Token, x-admin-token'
+  );
+}
 

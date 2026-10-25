@@ -8,6 +8,7 @@ import {
   getClientIp,
   checkRateLimit,
   applySecurityHeaders,
+  applyCorsHeaders,
   sanitizeFileName,
 } from './_lib/security.js';
 
@@ -63,14 +64,7 @@ const ALLOWED_EXTENSIONS = new Set([
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS & Security Defensive Headers
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
+  applyCorsHeaders(req, res);
   applySecurityHeaders(res);
 
   if (req.method === 'OPTIONS') {
@@ -159,6 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       Bucket: BUCKET_NAME,
       Key: fileKey,
       ContentType: mimeType,
+      ContentDisposition: safeExt === 'svg' ? `attachment; filename="${sanitizeFileName(fileName)}"` : 'inline',
     });
 
     const uploadUrl = await getSignedUrl(s3Client, command, {

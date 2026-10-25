@@ -5,17 +5,18 @@ import { db } from './_lib/db.js';
 import { images } from './_lib/schema.js';
 import { s3Client, BUCKET_NAME } from './_lib/s3.js';
 import { getAuthUserAsync } from './_lib/auth.js';
-import { getClientIp, checkRateLimit, applySecurityHeaders } from './_lib/security.js';
+import {
+  getClientIp,
+  checkRateLimit,
+  applySecurityHeaders,
+  applyCorsHeaders,
+  isValidFileKey,
+  sanitizeFileName,
+  ALLOWED_IMAGE_MIME_TYPES,
+} from './_lib/security.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS & Security Defensive Headers
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
+  applyCorsHeaders(req, res);
   applySecurityHeaders(res);
 
   if (req.method === 'OPTIONS') {
@@ -96,28 +97,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const { fileKey, originalName, mimeType, sizeBytes } = body || {};
 
-      if (!fileKey || typeof fileKey !== 'string') {
-        return res.status(400).json({ error: 'Missing or invalid "fileKey".' });
+      if (!fileKey || typeof fileKey !== 'string' || !isValidFileKey(fileKey)) {
+        return res.status(400).json({ error: 'Missing or invalid "fileKey" format.' });
       }
 
       if (!originalName || typeof originalName !== 'string') {
         return res.status(400).json({ error: 'Missing or invalid "originalName".' });
       }
 
-      if (!mimeType || typeof mimeType !== 'string') {
-        return res.status(400).json({ error: 'Missing or invalid "mimeType".' });
+      if (!mimeType || typeof mimeType !== 'string' || !ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
+        return res.status(400).json({ error: 'Missing or unpermitted "mimeType".' });
       }
 
       const parsedSize = Number(sizeBytes);
-      if (isNaN(parsedSize) || parsedSize <= 0) {
-        return res.status(400).json({ error: 'Missing or invalid "sizeBytes".' });
+      if (isNaN(parsedSize) || parsedSize <= 0 || parsedSize > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: 'Invalid "sizeBytes". Maximum allowed size is 10MB.' });
       }
+
+      const safeOriginalName = sanitizeFileName(originalName);
 
       const inserted = await db
         .insert(images)
         .values({
           fileKey: fileKey.trim(),
-          originalName: originalName.trim(),
+          originalName: safeOriginalName,
           mimeType: mimeType.trim(),
           sizeBytes: parsedSize,
           userId: currentUser.id,
@@ -147,6 +150,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (!id && !fileKey) {
         return res.status(400).json({ error: 'Must provide either "id" or "fileKey" to delete.' });
+      }
+
+      if (fileKey && !isValidFileKey(fileKey)) {
+        return res.status(400).json({ error: 'Invalid "fileKey" format.' });
       }
 
       const existing = await db
